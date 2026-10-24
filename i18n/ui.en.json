@@ -36,8 +36,10 @@
   "scan_identifying": "Identifying…",
   "scan_shutter_description": "Identify fish",
   "scan_gallery_description": "Choose a photo from gallery",
+  "scan_gallery_label": "Photos",
   "scan_flash_on_description": "Turn flash on",
   "scan_flash_off_description": "Turn flash off",
+  "scan_flash_label": "Flash",
   "scan_switched_to_tap": "Switched to tap mode for smoother scanning on this phone",
   "scan_camera_error": "The camera couldn't start. Close other camera apps and try again.",
 
@@ -165,6 +167,7 @@
 
   "settings_title": "Settings",
   "settings_language": "Language",
+  "settings_design": "Design",
   "settings_theme": "Appearance",
   "theme_system": "Same as phone",
   "theme_system_description": "Follows your phone's light or dark setting.",

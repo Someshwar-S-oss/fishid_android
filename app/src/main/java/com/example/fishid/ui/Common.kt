@@ -11,11 +11,16 @@ import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -24,25 +29,43 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -55,16 +78,24 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.os.LocaleListCompat
 import com.example.fishid.R
 import com.example.fishid.data.Catalog
 import com.example.fishid.data.FishEntry
-import com.example.fishid.ui.theme.Ink
+import com.example.fishid.ui.theme.Design
+import com.example.fishid.ui.theme.DesignChoice
+import com.example.fishid.ui.theme.FishTheme
 import com.example.fishid.ui.theme.IucnColors
 import com.example.fishid.ui.theme.ScientificStyle
+import com.example.fishid.ui.theme.Sea
 import com.example.fishid.ui.theme.isTamil
 import com.example.fishid.ui.theme.tamilLineHeight
 import kotlinx.coroutines.Dispatchers
@@ -97,6 +128,14 @@ fun Context.themeMode(): ThemeMode = runCatching { ThemeMode.valueOf(prefs().get
 fun Context.setThemeMode(mode: ThemeMode) {
     prefs().edit().putString("theme", mode.name).apply()
     AppCompatDelegate.setDefaultNightMode(mode.night)
+}
+
+fun Context.design(): Design = runCatching { Design.valueOf(prefs().getString("design", null)!!) }.getOrDefault(Design.SEA)
+
+/** Saves and applies at once: the theme reads [DesignChoice], so open screens restyle without a restart. */
+fun Context.setDesign(design: Design) {
+    prefs().edit().putString("design", design.name).apply()
+    DesignChoice.current = design
 }
 
 // ---------- Layout ----------
@@ -136,6 +175,18 @@ fun StatusBarIcons(light: Boolean) {
         onDispose { if (previous != null) bars.isAppearanceLightStatusBars = previous }
     }
 }
+
+/**
+ * Market design's solid "sticker" shadow: the shape repeated [offset] down-right in [color].
+ * No-op for a zero offset or transparent colour, so call sites don't branch on the design.
+ */
+fun Modifier.hardShadow(shape: Shape, offset: Dp, color: Color): Modifier =
+    if (offset <= 0.dp || color.alpha == 0f) this
+    else drawBehind {
+        val o = offset.toPx()
+        val outline = shape.createOutline(size, layoutDirection, this)
+        translate(o, o) { drawOutline(outline, color) }
+    }
 
 // ---------- Formatting ----------
 
@@ -254,17 +305,236 @@ fun NameStack(entry: FishEntry, primary: TextStyle, secondary: TextStyle, scient
     }
 }
 
-// ---------- Small components ----------
+// ---------- Cards and buttons ----------
+
+/** Sea: soft card with a hairline. Market: ink-bordered card on a solid offset shadow. Clickable when [onClick] is set. */
+@Composable
+fun FishCard(
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    color: Color = MaterialTheme.colorScheme.surface,
+    contentColor: Color = MaterialTheme.colorScheme.onSurface,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val s = FishTheme.style
+    val shape = RoundedCornerShape(s.cardRadius)
+    val m = modifier.hardShadow(shape, s.hardShadow, s.colors.shadow)
+    val border = BorderStroke(s.cardBorder, s.colors.border)
+    if (onClick != null) {
+        Surface(onClick = onClick, modifier = m, shape = shape, color = color, contentColor = contentColor, border = border, shadowElevation = s.cardElevation) { Column(content = content) }
+    } else {
+        Surface(modifier = m, shape = shape, color = color, contentColor = contentColor, border = border, shadowElevation = s.cardElevation) { Column(content = content) }
+    }
+}
+
+/** The one main action on a screen: full width, at least 56 dp tall, label wraps rather than clips (Tamil runs long). */
+@Composable
+fun PrimaryButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    @DrawableRes icon: Int? = null,
+    @DrawableRes trailingIcon: Int? = null,
+) = FishButton(text, onClick, modifier, enabled, icon, trailingIcon, FishTheme.colors.cta, FishTheme.colors.onCta)
+
+/** A filled (never outlined) secondary action: outlines read as disabled to first-time smartphone users. */
+@Composable
+fun SecondaryButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    @DrawableRes icon: Int? = null,
+) = FishButton(text, onClick, modifier, enabled, icon, null, FishTheme.colors.secondaryButton, FishTheme.colors.onSecondaryButton)
 
 @Composable
-fun FishCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-    ) { Column(content = content) }
+private fun FishButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier,
+    enabled: Boolean,
+    @DrawableRes icon: Int?,
+    @DrawableRes trailingIcon: Int?,
+    container: Color,
+    content: Color,
+) {
+    val s = FishTheme.style
+    val shape = RoundedCornerShape(s.buttonRadius)
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    // Market: the button rests on its shadow and sinks into it while pressed. Sea: zero offset, no-op.
+    val lift = if (enabled && !pressed) s.hardShadow else 0.dp
+    val sink = if (enabled && pressed) s.hardShadow else 0.dp
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        shape = shape,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = container, contentColor = content,
+            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant, disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        ),
+        elevation = null,
+        border = if (s.buttonBorder > 0.dp) BorderStroke(s.buttonBorder, if (enabled) s.colors.border else MaterialTheme.colorScheme.outlineVariant) else null,
+        interactionSource = interaction,
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp),
+        modifier = modifier.fillMaxWidth().heightIn(min = s.buttonHeight).hardShadow(shape, lift, s.colors.shadow).offset(sink, sink),
+    ) {
+        icon?.let { Icon(painterResource(it), null, Modifier.size(22.dp)); Spacer(Modifier.width(10.dp)) }
+        Text(text, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center, modifier = Modifier.weight(1f, fill = false))
+        trailingIcon?.let { Spacer(Modifier.width(8.dp)); Icon(painterResource(it), null, Modifier.size(22.dp)) }
+    }
 }
+
+/** Low-emphasis action ("Wrong fish? Tell us"): text only, still a 48 dp target. Underlined in Market so it reads as tappable. */
+@Composable
+fun LinkButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    @DrawableRes icon: Int? = null,
+    color: Color = MaterialTheme.colorScheme.primary,
+) {
+    TextButton(onClick = onClick, modifier = modifier.heightIn(min = 48.dp), colors = ButtonDefaults.textButtonColors(contentColor = color)) {
+        icon?.let { Icon(painterResource(it), null, Modifier.size(20.dp)); Spacer(Modifier.width(8.dp)) }
+        Text(
+            text,
+            style = MaterialTheme.typography.titleSmall.copy(textDecoration = if (FishTheme.style.isMarket) TextDecoration.Underline else null),
+            textAlign = TextAlign.Center,
+            modifier = Modifier.weight(1f, fill = false),
+        )
+    }
+}
+
+/** Section icon in a tinted circle (Sea) or a bordered turmeric tile (Market), like the deck's circled icons. */
+@Composable
+fun IconBadge(@DrawableRes icon: Int, modifier: Modifier = Modifier, size: Dp = 40.dp) {
+    val s = FishTheme.style
+    val shape = if (s.isMarket) RoundedCornerShape(size * 0.3f) else CircleShape
+    Box(
+        modifier.size(size).clip(shape).background(s.colors.iconBadge)
+            .then(if (s.isMarket) Modifier.border(1.5.dp, s.colors.border, shape) else Modifier),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(painterResource(icon), null, tint = s.colors.onIconBadge, modifier = Modifier.size(size * 0.55f))
+    }
+}
+
+// ---------- Match confidence ----------
+
+/** Colours and wording for a bar count (see ml.matchBars). Weaker matches get neutral colours and no word. */
+@Immutable
+class MatchLook(val container: Color, val content: Color, val bar: Color, @get:StringRes val label: Int?)
+
+@Composable
+fun matchLook(bars: Int): MatchLook {
+    val c = FishTheme.colors
+    return when {
+        bars >= 4 -> MatchLook(c.sureContainer, c.onSureContainer, c.sure, R.string.result_match_high)
+        bars == 3 -> MatchLook(c.likelyContainer, c.onLikelyContainer, c.likely, R.string.result_match_likely)
+        else -> MatchLook(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.onSurfaceVariant, MaterialTheme.colorScheme.onSurfaceVariant, null)
+    }
+}
+
+/** Four rising bars, like phone signal. Decorative: the text next to it carries the meaning for TalkBack. */
+@Composable
+fun MatchBars(bars: Int, color: Color, modifier: Modifier = Modifier, height: Dp = 18.dp) {
+    val empty = color.copy(alpha = 0.25f)
+    Canvas(modifier.size(width = height * 1.25f, height = height)) {
+        val gap = size.width * 0.1f
+        val w = (size.width - gap * 3) / 4
+        for (i in 0 until 4) {
+            val h = size.height * (i + 1) / 4
+            drawRoundRect(
+                color = if (i < bars) color else empty,
+                topLeft = Offset(i * (w + gap), size.height - h),
+                size = Size(w, h),
+                cornerRadius = CornerRadius(w / 3),
+            )
+        }
+    }
+}
+
+/** Bars + "High match · 97%" (or just "42% match" for weak candidates) in a tinted pill. */
+@Composable
+fun MatchChip(bars: Int, percent: Int, modifier: Modifier = Modifier) {
+    val look = matchLook(bars)
+    val text = look.label?.let { stringResource(R.string.result_match_percent, stringResource(it), percent) }
+        ?: stringResource(R.string.result_confidence, percent)
+    Surface(modifier, shape = RoundedCornerShape(50), color = look.container, contentColor = look.content) {
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            MatchBars(bars, look.bar, height = 14.dp)
+            Text(text, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold))
+        }
+    }
+}
+
+// ---------- Price ----------
+
+/**
+ * Price per kg. Sea: a soft pill with a tag icon. Market: a turmeric luggage tag with an eyelet,
+ * the way prices hang on fish-market signboards. [large] for the result sheet and profile.
+ */
+@Composable
+fun PriceTag(price: Int, modifier: Modifier = Modifier, large: Boolean = false) {
+    val s = FishTheme.style
+    val c = s.colors
+    if (s.isMarket) {
+        val notch = if (large) 18.dp else 13.dp
+        val shape = remember(notch) { TagShape(notch) }
+        val eyelet = MaterialTheme.colorScheme.surface
+        Surface(
+            modifier.hardShadow(shape, if (large) s.hardShadow else 2.dp, c.shadow),
+            shape = shape, color = c.priceContainer, contentColor = c.onPriceContainer, border = BorderStroke(2.dp, c.border),
+        ) {
+            Row(
+                Modifier
+                    .drawBehind {
+                        val center = Offset(notch.toPx() * 0.85f, size.height / 2)
+                        drawCircle(eyelet, radius = 3.5.dp.toPx(), center = center)
+                        drawCircle(c.border, radius = 3.5.dp.toPx(), center = center, style = Stroke(1.5.dp.toPx()))
+                    }
+                    .padding(start = notch + 8.dp, end = 12.dp, top = 2.dp, bottom = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                val figure = if (large) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.titleMedium
+                Text(formatRupees(price), style = figure.copy(fontWeight = FontWeight.ExtraBold, fontFeatureSettings = "tnum"))
+                Text(stringResource(R.string.price_unit_per_kg), style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(start = 5.dp))
+            }
+        }
+    } else {
+        Surface(modifier, shape = RoundedCornerShape(50), color = c.priceContainer, contentColor = c.onPriceContainer) {
+            Row(Modifier.padding(horizontal = 12.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Icon(painterResource(R.drawable.ic_price), null, tint = c.accentInk, modifier = Modifier.size(18.dp))
+                Text(
+                    stringResource(R.string.price_per_kg, formatRupees(price)),
+                    style = (if (large) MaterialTheme.typography.titleMedium else MaterialTheme.typography.labelMedium).copy(fontWeight = FontWeight.Bold),
+                )
+            }
+        }
+    }
+}
+
+/** A luggage-tag outline: pointed on the left, rounded on the right. */
+private class TagShape(private val notch: Dp) : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+        val n = with(density) { notch.toPx() }.coerceAtMost(size.height / 2)
+        val r = with(density) { 6.dp.toPx() }
+        val path = Path().apply {
+            moveTo(0f, size.height / 2)
+            lineTo(n, 0f)
+            lineTo(size.width - r, 0f)
+            quadraticTo(size.width, 0f, size.width, r)
+            lineTo(size.width, size.height - r)
+            quadraticTo(size.width, size.height, size.width - r, size.height)
+            lineTo(n, size.height)
+            close()
+        }
+        return Outline.Generic(path)
+    }
+}
+
+// ---------- Small components ----------
 
 @Composable
 fun Pill(text: String, background: Color, contentColor: Color, modifier: Modifier = Modifier, border: Color? = null) {
@@ -273,7 +543,7 @@ fun Pill(text: String, background: Color, contentColor: Color, modifier: Modifie
         shape = RoundedCornerShape(50),
         color = background,
         contentColor = contentColor,
-        border = border?.let { BorderStroke(1.dp, it) },
+        border = border?.let { BorderStroke(if (FishTheme.style.isMarket) 1.5.dp else 1.dp, it) },
     ) {
         Text(text, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold), modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp))
     }
@@ -283,7 +553,8 @@ fun Pill(text: String, background: Color, contentColor: Color, modifier: Modifie
 fun IucnBadge(code: String, long: Boolean = true) {
     val (bg, fg) = IucnColors[code] ?: return
     val label = codeLabel(code, ::iucnRes)
-    Pill(if (long) "${code.uppercase()} · $label" else label, bg, fg, border = if (code == "ne") MaterialTheme.colorScheme.onSurfaceVariant else null)
+    val ringed = code == "ne" || FishTheme.style.isMarket
+    Pill(if (long) "${code.uppercase()} · $label" else label, bg, fg, border = if (ringed) MaterialTheme.colorScheme.onSurfaceVariant else null)
 }
 
 /** Screen top bar: title, language switch, optional settings. */
@@ -313,8 +584,9 @@ fun TopBar(title: String, onBack: (() -> Unit)? = null, actions: @Composable () 
 @Composable
 fun LanguageSwitch(onDark: Boolean = false) {
     val tamil = isTamil()
-    val outline = if (onDark) Color.White.copy(alpha = 0.3f) else MaterialTheme.colorScheme.outline
-    Surface(shape = RoundedCornerShape(50), color = Color.Transparent, border = BorderStroke(1.dp, outline)) {
+    val market = FishTheme.style.isMarket
+    val outline = if (onDark) Color.White.copy(alpha = 0.35f) else MaterialTheme.colorScheme.outline
+    Surface(shape = RoundedCornerShape(50), color = Color.Transparent, border = BorderStroke(if (market && !onDark) 2.dp else 1.dp, outline)) {
         Row(Modifier.padding(2.dp)) {
             LangOption("A", stringResource(R.string.language_english), selected = !tamil, onDark) { setAppLanguage("en") }
             LangOption("அ", stringResource(R.string.language_tamil), selected = tamil, onDark) { setAppLanguage("ta") }
@@ -324,8 +596,17 @@ fun LanguageSwitch(onDark: Boolean = false) {
 
 @Composable
 private fun LangOption(glyph: String, name: String, selected: Boolean, onDark: Boolean, onClick: () -> Unit) {
-    val selBg = if (onDark) Color.White else MaterialTheme.colorScheme.primary
-    val selFg = if (onDark) Ink else MaterialTheme.colorScheme.onPrimary
+    val s = FishTheme.style
+    val selBg = when {
+        s.isMarket -> s.colors.cta
+        onDark -> Color.White
+        else -> MaterialTheme.colorScheme.primary
+    }
+    val selFg = when {
+        s.isMarket -> s.colors.onCta
+        onDark -> Sea.Ink
+        else -> MaterialTheme.colorScheme.onPrimary
+    }
     val fg = if (onDark) Color.White else MaterialTheme.colorScheme.onSurface
     Surface(
         onClick = { if (!selected) onClick() },

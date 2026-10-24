@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.pm.ActivityInfo
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.material3.Surface
+import com.example.fishid.ui.design
 import com.example.fishid.ui.themeMode
 import android.os.Bundle
 import androidx.activity.compose.BackHandler
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -38,6 +40,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import com.example.fishid.data.History
 import com.example.fishid.data.ScanRecord
 import com.example.fishid.ui.catalogue.FishGuideScreen
@@ -49,13 +52,13 @@ import com.example.fishid.ui.onboarding.OnboardingScreen
 import com.example.fishid.ui.scan.ScanScreen
 import com.example.fishid.ui.settings.SettingsScreen
 import com.example.fishid.ui.species.ProfileScreen
+import com.example.fishid.ui.theme.DesignChoice
 import com.example.fishid.ui.theme.FishIDTheme
-import com.example.fishid.ui.theme.NightBackground
-import com.example.fishid.ui.theme.NightInkMuted
-import com.example.fishid.ui.theme.NightLine
+import com.example.fishid.ui.theme.FishTheme
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         AppCompatDelegate.setDefaultNightMode(themeMode().night) // the in-app Light/Dark/System choice
+        DesignChoice.current = design() // Sea or Market, picked in Settings
         super.onCreate(savedInstanceState)
         // Phones stay portrait: scanning is a one-handed portrait task and a market crowd rotates phones by accident.
         // Tablets and foldables rotate freely (Android 16+ ignores the lock there anyway) and get readable-width layouts.
@@ -135,7 +138,9 @@ private fun MainTabs(tab: Int, onTab: (Int) -> Unit, open: (String) -> Unit) {
     // Dark bar only while the viewfinder is actually showing (not on the light permission screen).
     var cameraShown by remember { mutableStateOf(false) }
     val onCamera = tab == 0 && cameraShown
-    Column(Modifier.fillMaxSize().background(if (onCamera) NightBackground else MaterialTheme.colorScheme.background)) {
+    val style = FishTheme.style
+    val c = style.colors
+    Column(Modifier.fillMaxSize().background(if (onCamera) c.cameraBar else MaterialTheme.colorScheme.background)) {
         Box(Modifier.weight(1f)) {
             when (tab) {
                 0 -> ScanScreen(
@@ -149,8 +154,13 @@ private fun MainTabs(tab: Int, onTab: (Int) -> Unit, open: (String) -> Unit) {
                 else -> HistoryScreen(onOpen = { open(Routes.forScan(it)) }, onSettings = { open(Routes.SETTINGS) })
             }
         }
+        // Sea: a hairline. Market: a 2 dp ink rule, like a signboard edge. None over the camera, where the bar is dark already.
+        if (!onCamera) HorizontalDivider(
+            thickness = if (style.isMarket) 2.dp else 1.dp,
+            color = if (style.isMarket) c.border else MaterialTheme.colorScheme.outlineVariant,
+        )
         // The bar turns dark on the camera tab so it doesn't glare against the viewfinder.
-        NavigationBar(containerColor = if (onCamera) NightBackground else MaterialTheme.colorScheme.surface) {
+        NavigationBar(containerColor = if (onCamera) c.cameraBar else MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
             val items = listOf(
                 Triple(R.drawable.ic_scan, R.string.nav_scan, 0),
                 Triple(R.drawable.ic_fish, R.string.nav_fish, 1),
@@ -162,19 +172,31 @@ private fun MainTabs(tab: Int, onTab: (Int) -> Unit, open: (String) -> Unit) {
                     onClick = { onTab(i) },
                     icon = { Icon(painterResource(icon), null) },
                     label = { Text(stringResource(label), style = MaterialTheme.typography.labelMedium, maxLines = 1) },
-                    colors = if (onCamera) NavigationBarItemDefaults.colors(
-                        selectedIconColor = Color.White, selectedTextColor = Color.White,
-                        indicatorColor = Color(0xFF1F4F58),
-                        unselectedIconColor = NightInkMuted, unselectedTextColor = NightInkMuted,
-                    ) else NavigationBarItemDefaults.colors(
-                        selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        selectedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    ),
+                    colors = when {
+                        onCamera -> NavigationBarItemDefaults.colors(
+                            selectedIconColor = c.onCameraIndicator, selectedTextColor = Color.White,
+                            indicatorColor = c.cameraIndicator,
+                            unselectedIconColor = CameraTabMuted, unselectedTextColor = CameraTabMuted,
+                        )
+                        // Market: the turmeric pill of a signboard, ink icon on it.
+                        style.isMarket -> NavigationBarItemDefaults.colors(
+                            selectedIconColor = c.onCta, selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                            indicatorColor = c.cta,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        else -> NavigationBarItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            selectedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
                 )
             }
         }
     }
 }
+
+private val CameraTabMuted = Color(0xFFB8C2CC) // >= 7:1 on both designs' dark camera bar

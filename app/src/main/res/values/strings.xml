@@ -34,8 +34,10 @@
     <string name="scan_identifying">Identifying…</string>
     <string name="scan_shutter_description">Identify fish</string>
     <string name="scan_gallery_description">Choose a photo from gallery</string>
+    <string name="scan_gallery_label">Photos</string>
     <string name="scan_flash_on_description">Turn flash on</string>
     <string name="scan_flash_off_description">Turn flash off</string>
+    <string name="scan_flash_label">Flash</string>
     <string name="scan_switched_to_tap">Switched to tap mode for smoother scanning on this phone</string>
     <string name="scan_camera_error">The camera couldn\'t start. Close other camera apps and try again.</string>
     <string name="result_match_high">High match</string>
@@ -158,6 +160,7 @@
     <string name="report_privacy">Only this photo and your answers are shared. No name or phone number.</string>
     <string name="settings_title">Settings</string>
     <string name="settings_language">Language</string>
+    <string name="settings_design">Design</string>
     <string name="settings_theme">Appearance</string>
     <string name="theme_system">Same as phone</string>
     <string name="theme_system_description">Follows your phone\'s light or dark setting.</string>
@@ -182,4 +185,6 @@
     <string name="about_body">FishID helps you identify commercially important fish and learn about them.</string>
     <string name="language_english" translatable="false">English</string>
     <string name="language_tamil" translatable="false">தமிழ்</string>
+    <string name="design_sea" translatable="false">A · Sea (Kadal)</string>
+    <string name="design_market" translatable="false">B · Market (Sandhai)</string>
 </resources>

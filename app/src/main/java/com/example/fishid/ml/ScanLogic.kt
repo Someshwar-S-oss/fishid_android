@@ -33,6 +33,14 @@ fun decide(preds: List<Prediction>, threshold: (String) -> Float): Outcome {
 
 fun isHighMatch(confidence: Float, threshold: Float) = confidence >= threshold + HIGH_MARGIN
 
+/** Confidence as mobile-signal bars (1–4): a scale everyone with a phone already reads. 4 = high, 3 = likely match. */
+fun matchBars(confidence: Float, threshold: Float): Int = when {
+    isHighMatch(confidence, threshold) -> 4
+    confidence >= threshold -> 3
+    confidence >= UNSURE_FLOOR -> 2
+    else -> 1
+}
+
 /** null until enough samples; then true if this phone is too slow for live scanning. */
 fun prefersTapMode(samplesMs: List<Long>): Boolean? =
     if (samplesMs.size < LATENCY_SAMPLES) null else samplesMs.sorted()[samplesMs.size / 2] > LIVE_MAX_MEDIAN_MS

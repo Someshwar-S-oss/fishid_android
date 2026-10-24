@@ -243,6 +243,15 @@ tools/i18n.py         → generates res/values/strings.xml and res/values-ta/str
 
 ## 7. Visual design
 
+> **Two candidate designs (branch `design-variations`)**, switchable in Settings → Design so the team can compare on one phone.
+> - **A · Sea (Kadal)**: calm field guide. Warm sand background, ocean-blue actions, coral scan accents, soft cards, Hind Madurai throughout. 2-column photo grid in the Fish guide.
+> - **B · Market (Sandhai)**: bold signage for sunlight. Cream paper, ink borders with solid offset shadows, black-on-turmeric buttons and price tags, Baloo Thambi 2 headings (OFL, `licenses/`). Full-width signboard rows in the Fish guide.
+>
+> Both share the usability fixes: stacked full-width buttons, signal-bar match confidence, a prominent price on the result, labelled camera controls, and the user's photo pinned on the compare screen.
+> Tokens: `ui/theme/Color.kt` (palettes), `ui/theme/Design.kt` (`FishStyle`/`FishColors`, read via `FishTheme.style`), and shared components in `ui/Common.kt`.
+> **To keep one design:** delete the other palette and its `fishStyle`/colour-scheme branch, the `isMarket` branches in the UI, and the Design card in Settings (plus the Baloo fonts if Sea wins).
+> The table below is the original v1 palette, kept for reference.
+
 ### Colour (light theme primary; camera screen is always dark)
 | Token | Hex | Use |
 |---|---|---|

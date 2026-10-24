@@ -3,7 +3,9 @@ package com.example.fishid.ui.species
 import android.content.Intent
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,9 +35,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.PrimaryScrollableTabRow
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
@@ -80,10 +80,11 @@ import com.example.fishid.ui.habitatRes
 import com.example.fishid.ui.imagePath
 import com.example.fishid.ui.primaryName
 import com.example.fishid.ui.verticalRes
-import com.example.fishid.ui.theme.NutCarb
-import com.example.fishid.ui.theme.NutFat
-import com.example.fishid.ui.theme.NutMoisture
-import com.example.fishid.ui.theme.NutProtein
+import com.example.fishid.ui.IconBadge
+import com.example.fishid.ui.PriceTag
+import com.example.fishid.ui.SecondaryButton
+import com.example.fishid.ui.theme.FishTheme
+import com.example.fishid.ui.theme.Sea
 import com.example.fishid.ui.theme.ScientificStyle
 import com.example.fishid.ui.theme.tamilLineHeight
 import kotlinx.coroutines.launch
@@ -162,7 +163,7 @@ fun ProfileScreen(
                         if (s.iucn != null || s.priceInrPerKg != null || s.habitat.isNotEmpty()) {
                             FlowRow(Modifier.padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 s.iucn?.let { IucnBadge(it) }
-                                s.priceInrPerKg?.let { Pill(stringResource(R.string.price_per_kg, formatRupees(it)), MaterialTheme.colorScheme.background, MaterialTheme.colorScheme.onSurface, border = MaterialTheme.colorScheme.outline) }
+                                s.priceInrPerKg?.let { PriceTag(it) }
                                 s.habitat.firstOrNull()?.let { Pill(codeLabel(it, ::habitatRes), MaterialTheme.colorScheme.background, MaterialTheme.colorScheme.onSurface, border = MaterialTheme.colorScheme.outline) }
                             }
                         }
@@ -193,18 +194,21 @@ fun ProfileScreen(
             item { Footer(entry, onReport) }
         }
         // Status-bar band: matches the photo at the top, the tab bar once scrolled.
-        Box(Modifier.fillMaxWidth().height(statusBar).background(if (atTop) PhotoBackground else MaterialTheme.colorScheme.surface))
+        Box(Modifier.fillMaxWidth().height(statusBar).background(if (atTop) FishTheme.colors.photoBackdrop else MaterialTheme.colorScheme.surface))
     }
 }
 
-private val PhotoBackground = Color(0xFF1B252E)
+/** Sea: the white content sheet rises over the photo with rounded corners. Market: a hard ink rule under the photo. */
+private val SheetLip = 24.dp
 
 @Composable
 private fun PhotoHeader(entry: FishEntry, userPhoto: String?, onBack: () -> Unit, onShare: () -> Unit) {
+    val style = FishTheme.style
     val images = entry.species.images.indices.map { entry.imagePath(it) }
     var showUser by rememberSaveable { mutableStateOf(userPhoto != null) }
     val pager = rememberPagerState { images.size.coerceAtLeast(1) }
-    Box(Modifier.fillMaxWidth().height(280.dp).background(PhotoBackground)) {
+    val lip = if (style.isMarket) 0.dp else SheetLip
+    Box(Modifier.fillMaxWidth().height(if (style.isMarket) 280.dp else 300.dp).background(style.colors.photoBackdrop)) {
         if (showUser && userPhoto != null) {
             FishImage(userPhoto, stringResource(R.string.label_your_photo), Modifier.fillMaxSize())
         } else {
@@ -212,7 +216,7 @@ private fun PhotoHeader(entry: FishEntry, userPhoto: String?, onBack: () -> Unit
                 FishImage(images.getOrNull(page), stringResource(R.string.label_reference_photo) + ": " + entry.commonName, Modifier.fillMaxSize())
             }
             if (images.size > 1) {
-                Row(Modifier.align(Alignment.BottomCenter).padding(bottom = if (userPhoto != null) 62.dp else 14.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(Modifier.align(Alignment.BottomCenter).padding(bottom = lip + if (userPhoto != null) 62.dp else 14.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     repeat(images.size) { i ->
                         Box(Modifier.size(if (i == pager.currentPage) 20.dp else 8.dp, 8.dp).clip(CircleShape).background(if (i == pager.currentPage) Color.White else Color.White.copy(alpha = 0.5f)))
                     }
@@ -222,24 +226,36 @@ private fun PhotoHeader(entry: FishEntry, userPhoto: String?, onBack: () -> Unit
         RoundIconButton(R.drawable.ic_back, stringResource(R.string.action_back), onBack, Modifier.align(Alignment.TopStart).padding(12.dp))
         RoundIconButton(R.drawable.ic_share, stringResource(R.string.action_share), onShare, Modifier.align(Alignment.TopEnd).padding(12.dp))
         if (userPhoto != null) {
-            Row(Modifier.align(Alignment.BottomCenter).padding(bottom = 14.dp).clip(RoundedCornerShape(50)).background(Color(0xB8080F1A)).padding(3.dp)) {
+            Row(Modifier.align(Alignment.BottomCenter).padding(bottom = lip + 14.dp).clip(RoundedCornerShape(50)).background(Color(0xB8080F1A)).padding(3.dp)) {
                 PhotoToggle(stringResource(R.string.label_reference_photo), !showUser) { showUser = false }
                 PhotoToggle(stringResource(R.string.label_your_photo), showUser) { showUser = true }
             }
+        }
+        if (style.isMarket) {
+            Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(2.dp).background(style.colors.border))
+        } else {
+            Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(lip).clip(RoundedCornerShape(topStart = lip, topEnd = lip)).background(MaterialTheme.colorScheme.surface))
         }
     }
 }
 
 @Composable
 private fun PhotoToggle(label: String, selected: Boolean, onClick: () -> Unit) {
-    Surface(onClick = onClick, shape = RoundedCornerShape(50), color = if (selected) Color.White else Color.Transparent, contentColor = if (selected) com.example.fishid.ui.theme.Ink else Color.White) {
+    val style = FishTheme.style
+    val on = if (style.isMarket) style.colors.cta else Color.White
+    Surface(onClick = onClick, shape = RoundedCornerShape(50), color = if (selected) on else Color.Transparent, contentColor = if (selected) Sea.Ink else Color.White) {
         Text(label, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold), modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
     }
 }
 
 @Composable
 fun RoundIconButton(@DrawableRes icon: Int, description: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Surface(onClick = onClick, shape = CircleShape, color = Color.White.copy(alpha = 0.92f), contentColor = com.example.fishid.ui.theme.Ink, modifier = modifier.size(48.dp)) {
+    val style = FishTheme.style
+    Surface(
+        onClick = onClick, shape = CircleShape, color = Color.White.copy(alpha = 0.92f), contentColor = Sea.Ink,
+        border = if (style.isMarket) BorderStroke(2.dp, Color(0xFF1B1B1B)) else null,
+        modifier = modifier.size(48.dp),
+    ) {
         Box(contentAlignment = Alignment.Center) { Icon(painterResource(icon), description) }
     }
 }
@@ -256,23 +272,30 @@ private fun Section(title: Int? = null, content: @Composable () -> Unit) {
 private fun Overview(entry: FishEntry) {
     val s = entry.species
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        FishCard(Modifier.fillMaxWidth()) {
+        // Price first: it is what a shopper came for. Market paints the whole card as a turmeric signboard.
+        val style = FishTheme.style
+        val c = style.colors
+        FishCard(
+            Modifier.fillMaxWidth(),
+            color = if (style.isMarket) c.cta else c.priceContainer,
+            contentColor = if (style.isMarket) c.onCta else c.onPriceContainer,
+        ) {
             Column(Modifier.padding(20.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Icon(painterResource(R.drawable.ic_price), null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
-                    Text(stringResource(R.string.price_title), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Icon(painterResource(R.drawable.ic_price), null, tint = if (style.isMarket) c.onCta else c.accentInk, modifier = Modifier.size(24.dp))
+                    Text(stringResource(R.string.price_title), style = MaterialTheme.typography.titleSmall)
                 }
                 if (s.priceInrPerKg != null) {
                     Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
                         Text(formatRupees(s.priceInrPerKg), style = MaterialTheme.typography.displaySmall.copy(fontFeatureSettings = "tnum"))
-                        Text(stringResource(R.string.price_unit_per_kg), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 4.dp))
+                        Text(stringResource(R.string.price_unit_per_kg), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 4.dp))
                     }
                 } else {
                     Text(stringResource(R.string.price_unavailable), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
                 }
                 if (s.priceInrPerKg != null) {
                     val note = listOfNotNull(s.priceUpdated?.let { stringResource(R.string.price_updated, it) }, stringResource(R.string.price_note)).joinToString(" · ")
-                    Text(note, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
+                    Text(note, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 8.dp))
                 }
             }
         }
@@ -301,23 +324,30 @@ private fun Overview(entry: FishEntry) {
 @Composable
 private fun NutritionCard(n: Nutrition) {
     // Moisture dominates (~76 g), so separate bars would make protein look tiny: lead with protein, then one 100% bar.
+    val series = FishTheme.colors.nutrition
     val parts = listOf(
-        Triple(R.string.nutrition_protein, n.protein, NutProtein),
-        Triple(R.string.nutrition_fat, n.fat, NutFat),
-        Triple(R.string.nutrition_moisture, n.moisture, NutMoisture),
-        Triple(R.string.nutrition_ash, n.ash, MaterialTheme.colorScheme.onSurfaceVariant), // slate in light, light grey in dark
-        Triple(R.string.nutrition_carbohydrate, n.carbohydrate, NutCarb),
+        Triple(R.string.nutrition_protein, n.protein, series[0]),
+        Triple(R.string.nutrition_fat, n.fat, series[1]),
+        Triple(R.string.nutrition_moisture, n.moisture, series[2]),
+        Triple(R.string.nutrition_ash, n.ash, series[3]),
+        Triple(R.string.nutrition_carbohydrate, n.carbohydrate, series[4]),
     )
     val total = parts.sumOf { it.second }.takeIf { it > 0 } ?: 1.0
+    val market = FishTheme.style.isMarket
     val barDescription = parts.map { (label, v, _) -> "${stringResource(label)} ${stringResource(R.string.nutrition_grams, formatGrams(v))}" }.joinToString(", ")
     FishCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(20.dp)) {
             Text(
                 stringResource(R.string.nutrition_protein_highlight, String.format(java.util.Locale.ROOT, "%.1f", n.protein)),
                 style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                color = if (market) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.primary,
             )
-            Row(Modifier.padding(top = 16.dp).fillMaxWidth().height(18.dp).clip(RoundedCornerShape(9.dp)).semantics { contentDescription = barDescription }) {
+            val barShape = RoundedCornerShape(if (market) 4.dp else 9.dp)
+            Row(
+                Modifier.padding(top = 16.dp).fillMaxWidth().height(if (market) 22.dp else 18.dp).clip(barShape)
+                    .then(if (market) Modifier.border(2.dp, FishTheme.colors.border, barShape) else Modifier)
+                    .semantics { contentDescription = barDescription },
+            ) {
                 parts.forEach { (_, v, color) -> if (v > 0) Box(Modifier.weight((v / total).toFloat()).fillMaxHeight().background(color)) }
             }
             Spacer(Modifier.height(8.dp))
@@ -351,9 +381,12 @@ private fun Identify(entry: FishEntry) {
             }
         }
         if (marks.size > COLLAPSED_FEATURES) {
-            OutlinedButton(onClick = { expanded = !expanded }, modifier = Modifier.fillMaxWidth().padding(top = 10.dp).heightIn(min = 48.dp)) {
-                Text(if (expanded) stringResource(R.string.profile_show_fewer_features) else stringResource(R.string.profile_show_all_features, marks.size))
-            }
+            SecondaryButton(
+                if (expanded) stringResource(R.string.profile_show_fewer_features) else stringResource(R.string.profile_show_all_features, marks.size),
+                onClick = { expanded = !expanded },
+                modifier = Modifier.padding(top = 12.dp),
+                icon = if (expanded) null else R.drawable.ic_chevron_down,
+            )
         }
     }
     entry.species.meristics?.let { m ->
@@ -368,7 +401,7 @@ private fun Identify(entry: FishEntry) {
                     row.forEach { (count, label) ->
                         FishCard(Modifier.weight(1f).fillMaxHeight()) {
                             Column(Modifier.fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(count.toString(), style = MaterialTheme.typography.displaySmall.copy(fontSize = 36.sp, lineHeight = 42.sp), color = MaterialTheme.colorScheme.onPrimaryContainer)
+                                Text(count.toString(), style = MaterialTheme.typography.displaySmall.copy(fontSize = 36.sp, lineHeight = 42.sp), color = if (FishTheme.style.isMarket) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.primary)
                                 Text(stringResource(label), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
                             }
                         }
@@ -397,7 +430,7 @@ private fun Ecology(entry: FishEntry) {
                 row.forEach { (icon, label, value) ->
                     FishCard(Modifier.weight(1f).fillMaxHeight()) {
                         Column(Modifier.padding(16.dp)) {
-                            Icon(painterResource(icon), null, tint = MaterialTheme.colorScheme.primary)
+                            IconBadge(icon)
                             Text(stringResource(label), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 10.dp))
                             value()
                         }
@@ -417,11 +450,7 @@ private fun Footer(entry: FishEntry, onReport: (() -> Unit)?) {
     Column(Modifier.readableWidth().padding(16.dp).navigationBarsPadding()) {
         HorizontalDivider(color = MaterialTheme.colorScheme.outline)
         entry.species.source?.let { Text(stringResource(R.string.profile_source, it), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 12.dp)) }
-        if (onReport != null) FilledTonalButton(onClick = onReport, modifier = Modifier.fillMaxWidth().padding(top = 16.dp).heightIn(min = 52.dp)) {
-            Icon(painterResource(R.drawable.ic_flag), null, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.profile_report_link))
-        }
+        if (onReport != null) SecondaryButton(stringResource(R.string.profile_report_link), onReport, Modifier.padding(top = 16.dp), icon = R.drawable.ic_flag)
         Spacer(Modifier.height(24.dp))
     }
 }

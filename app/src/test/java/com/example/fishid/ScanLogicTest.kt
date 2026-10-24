@@ -7,6 +7,7 @@ import com.example.fishid.ml.Outcome
 import com.example.fishid.ml.Prediction
 import com.example.fishid.ml.aggregate
 import com.example.fishid.ml.decide
+import com.example.fishid.ml.matchBars
 import com.example.fishid.ml.prefersTapMode
 import com.example.fishid.ml.softmax
 import com.example.fishid.ml.validateModel
@@ -62,6 +63,13 @@ class ScanLogicTest {
         assertNull(prefersTapMode(List(14) { 500L }))
         assertEquals(false, prefersTapMode(List(15) { 40L } + List(4) { 900L }))
         assertEquals(true, prefersTapMode(List(15) { 220L }))
+    }
+
+    @Test fun matchBarsFollowThresholds() {
+        assertEquals(4, matchBars(0.85f, 0.7f)) // high: at least threshold + 0.10
+        assertEquals(3, matchBars(0.72f, 0.7f)) // likely
+        assertEquals(2, matchBars(0.45f, 0.7f)) // shown on the compare screen
+        assertEquals(1, matchBars(0.10f, 0.7f))
     }
 
     @Test fun modelValidation() {

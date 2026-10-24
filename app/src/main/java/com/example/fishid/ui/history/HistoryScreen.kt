@@ -2,24 +2,25 @@ package com.example.fishid.ui.history
 
 import android.text.format.DateFormat
 import android.text.format.DateUtils
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
@@ -37,6 +38,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.fishid.R
@@ -44,11 +46,14 @@ import com.example.fishid.ui.readableWidth
 import com.example.fishid.data.Catalog
 import com.example.fishid.data.History
 import com.example.fishid.data.ScanRecord
+import com.example.fishid.ui.FishCard
 import com.example.fishid.ui.FishImage
+import com.example.fishid.ui.IconBadge
 import com.example.fishid.ui.LanguageSwitch
 import com.example.fishid.ui.TopBar
 import com.example.fishid.ui.currentLang
 import com.example.fishid.ui.primaryName
+import com.example.fishid.ui.theme.FishTheme
 import com.example.fishid.ui.theme.tamilLineHeight
 import java.util.Calendar
 
@@ -111,19 +116,17 @@ private fun HistoryRow(record: ScanRecord, onOpen: (ScanRecord) -> Unit) {
         enableDismissFromStartToEnd = false,
         onDismiss = { if (it == SwipeToDismissBoxValue.EndToStart) History.delete(context, record.id) },
         backgroundContent = {
-            Box(Modifier.fillMaxSize().clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.error).padding(horizontal = 20.dp), contentAlignment = Alignment.CenterEnd) {
+            Box(Modifier.fillMaxSize().clip(RoundedCornerShape(FishTheme.style.cardRadius)).background(MaterialTheme.colorScheme.error).padding(horizontal = 20.dp), contentAlignment = Alignment.CenterEnd) {
                 Icon(painterResource(R.drawable.ic_trash), stringResource(R.string.history_delete), tint = MaterialTheme.colorScheme.onError)
             }
         },
     ) {
-        Surface(
-            onClick = { onOpen(record) },
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surface,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-        ) {
-            Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                FishImage(record.photo, stringResource(R.string.label_your_photo), Modifier.size(64.dp).clip(RoundedCornerShape(12.dp)), maxPx = 240)
+        FishCard(onClick = { onOpen(record) }) {
+            Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Box {
+                    FishImage(record.photo, stringResource(R.string.label_your_photo), Modifier.size(68.dp).clip(RoundedCornerShape(12.dp)), maxPx = 240)
+                    OutcomeMark(record, Modifier.align(Alignment.BottomEnd).offset(6.dp, 6.dp))
+                }
                 Column(Modifier.weight(1f)) {
                     Text(entry?.primaryName() ?: stringResource(R.string.history_not_identified), style = tamilLineHeight(MaterialTheme.typography.titleMedium))
                     val time = DateFormat.getTimeFormat(context).format(record.timeMs)
@@ -136,6 +139,27 @@ private fun HistoryRow(record: ScanRecord, onOpen: (ScanRecord) -> Unit) {
     }
 }
 
+/** ✓ identified · ? not sure · ✕ not identified, in a ringed dot on the photo corner. Shape and colour both differ. */
+@Composable
+private fun OutcomeMark(record: ScanRecord, modifier: Modifier = Modifier) {
+    val c = FishTheme.colors
+    val (bg, fg) = when {
+        record.speciesId != null -> c.sureContainer to c.onSureContainer
+        record.outcome == ScanRecord.Outcome.UNSURE -> c.likelyContainer to c.onLikelyContainer
+        else -> MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Box(
+        modifier.size(26.dp).clip(CircleShape).background(bg).border(2.dp, MaterialTheme.colorScheme.surface, CircleShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        when {
+            record.speciesId != null -> Icon(painterResource(R.drawable.ic_check), null, tint = fg, modifier = Modifier.size(15.dp))
+            record.outcome == ScanRecord.Outcome.UNSURE -> Text("?", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold), color = fg)
+            else -> Icon(painterResource(R.drawable.ic_close), null, tint = fg, modifier = Modifier.size(15.dp))
+        }
+    }
+}
+
 @Composable
 private fun EmptyHistory() {
     Column(
@@ -143,7 +167,7 @@ private fun EmptyHistory() {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Icon(painterResource(R.drawable.ic_history), null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(56.dp))
+        IconBadge(R.drawable.ic_history, size = 96.dp)
         Text(stringResource(R.string.history_empty_title), style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 16.dp, bottom = 8.dp))
         Text(stringResource(R.string.history_empty_body), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
     }

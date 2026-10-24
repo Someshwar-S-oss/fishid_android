@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
@@ -48,6 +47,8 @@ import com.example.fishid.data.Report
 import com.example.fishid.data.Reports
 import com.example.fishid.ml.Classifier
 import com.example.fishid.ui.FishImage
+import com.example.fishid.ui.PrimaryButton
+import com.example.fishid.ui.theme.FishTheme
 import com.example.fishid.ui.TopBar
 import com.example.fishid.ui.currentLang
 import com.example.fishid.ui.primaryName
@@ -83,7 +84,7 @@ fun ReportScreen(scanId: String, onDone: () -> Unit) {
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).imePadding(), horizontalAlignment = Alignment.CenterHorizontally) {
         TopBar(stringResource(R.string.report_title), onBack = onDone)
         Column(Modifier.weight(1f).readableWidth().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Box(Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(20.dp))) {
+            Box(Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(FishTheme.style.cardRadius))) {
                 FishImage(record.photo, stringResource(R.string.label_your_photo), Modifier.fillMaxSize(), maxPx = 800)
             }
             if (guess != null) {
@@ -123,8 +124,10 @@ fun ReportScreen(scanId: String, onDone: () -> Unit) {
             OutlinedTextField(note, { note = it }, Modifier.fillMaxWidth().heightIn(min = 112.dp), label = { Text(stringResource(R.string.report_note_hint)) }, shape = RoundedCornerShape(12.dp), colors = fieldColors)
             Text(stringResource(R.string.report_privacy), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Button(
+        PrimaryButton(
+            stringResource(R.string.report_submit),
             enabled = answer != null,
+            icon = R.drawable.ic_check,
             onClick = {
                 scope.launch {
                     withContext(Dispatchers.IO) {
@@ -150,7 +153,7 @@ fun ReportScreen(scanId: String, onDone: () -> Unit) {
                     onDone()
                 }
             },
-            modifier = Modifier.readableWidth().padding(16.dp).navigationBarsPadding().heightIn(min = 56.dp),
-        ) { Text(stringResource(R.string.report_submit)) }
+            modifier = Modifier.readableWidth().padding(16.dp).navigationBarsPadding(),
+        )
     }
 }
