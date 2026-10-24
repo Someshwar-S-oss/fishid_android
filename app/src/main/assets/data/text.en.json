@@ -1,0 +1,26 @@
+{
+  "scolopsis_bimaculata": {
+    "common_name": "Thumbprint Monocle Bream",
+    "distribution": "East and West coasts of India",
+    "field_marks": [
+      "Blue stripe joining the eyes",
+      "1–2 brownish blotches on the upper body",
+      "Colour: upper body grey, whitish below, with a blue stripe joining the eyes",
+      "Body shape fusiform / normal; cross-section oval",
+      "Large suborbital spine present",
+      "Antrorse (forward-directed) suborbital spine absent",
+      "Head scales reach forward to the posterior nostrils",
+      "Lower limb of preopercle scaly",
+      "Pelvic fins long, reaching between anus and anal-fin origin; axillary scale present"
+    ]
+  },
+  "atule_mate": {
+    "common_name": "Yellowtail Scad"
+  },
+  "lutjanus_quinquelineatus": {
+    "common_name": "Five-lined Snapper"
+  },
+  "megalaspis_cordyla": {
+    "common_name": "Torpedo Scad"
+  }
+}

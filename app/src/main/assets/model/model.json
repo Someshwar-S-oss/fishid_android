@@ -1,0 +1,10 @@
+{
+  "_note": "EfficientNet-B0 (frozen) + logistic-regression head, fp16 weights. From Repos/fishy export_tflite.py. Normalisation is baked into the model: feed RGB 0..255, whole photo squashed to 224x224.",
+  "model_version": 1,
+  "min_app_version": 1,
+  "min_data_version": 2,
+  "input": {"mean": [0, 0, 0], "std": [1, 1, 1], "range": "0-255", "resize": "squash"},
+  "output": "softmax",
+  "default_threshold": 0.7,
+  "labels": ["atule_mate", "lutjanus_quinquelineatus", "megalaspis_cordyla"]
+}
