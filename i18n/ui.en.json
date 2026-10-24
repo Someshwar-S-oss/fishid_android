@@ -1,6 +1,7 @@
 {
   "app_name": "FishID",
 
+  "nav_home": "Home",
   "nav_scan": "Scan",
   "nav_fish": "Fish guide",
   "nav_history": "History",
@@ -41,6 +42,17 @@
   "scan_switched_to_tap": "Switched to tap mode for smoother scanning on this phone",
   "scan_camera_error": "The camera couldn't start. Close other camera apps and try again.",
 
+  "home_scan_cta_title": "Identify a fish",
+  "home_scan_cta_body": "Point your camera at a fish to see its name, price and nutrition.",
+  "home_recent": "Recent scans",
+  "home_market_prices": "Market prices",
+  "home_how_it_works": "How it works",
+  "home_see_all": "See all",
+  "scanner_title": "Scanner",
+  "result_match_score": "Match score",
+  "nutrition_energy": "Energy",
+  "nutrition_kcal": "{kcal} kcal",
+
   "result_match_high": "High match",
   "result_match_likely": "Likely match",
   "result_confidence": "{percent}% match",
@@ -65,6 +77,7 @@
   "tab_identify": "How to identify",
   "tab_habitat": "Habitat",
 
+  "profile_names": "Names",
   "label_common_name": "Common name",
   "label_scientific_name": "Scientific name",
   "label_scientific_name_tamil": "Scientific name in Tamil",

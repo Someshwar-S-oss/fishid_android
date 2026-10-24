@@ -39,7 +39,8 @@ data class Species(
 data class Meristics(val dorsalSpines: Int, val dorsalRays: Int, val analSpines: Int, val analRays: Int)
 
 @Serializable
-data class Nutrition(val protein: Double, val fat: Double, val moisture: Double, val ash: Double, val carbohydrate: Double)
+/** Grams per 100 g. Ash and carbohydrate are often not reported in proximate-composition studies. */
+data class Nutrition(val protein: Double, val fat: Double, val moisture: Double, val ash: Double? = null, val carbohydrate: Double? = null)
 
 @Serializable
 data class SpeciesText(val commonName: String? = null, val distribution: String? = null, val fieldMarks: List<String>? = null)
@@ -110,3 +111,8 @@ class Catalog(val dataVersion: Int, val updated: String, val species: List<Speci
         }
     }
 }
+
+/** Primary name follows the UI language; Tamil mode leads with the local market name. */
+fun FishEntry.primaryName(tamil: Boolean): String = if (tamil) species.localNameTa ?: commonName else commonName
+
+fun FishEntry.secondaryName(tamil: Boolean): String? = if (tamil) commonName.takeIf { species.localNameTa != null } else species.localNameTa

@@ -14,6 +14,30 @@ const val LIVE_MAX_MEDIAN_MS = 150L
 /** Frames to time before deciding live vs tap. */
 const val LATENCY_SAMPLES = 15
 
+/** Share of the screen width the scan frame takes. Must match FRAME_FRACTION in src/screens/Scanner.tsx. */
+const val FRAME_FRACTION = 0.84f
+
+/**
+ * Share of the (upright) camera frame's width that lies inside the on-screen frame. The preview fills the view
+ * (FILL_CENTER), so on a view narrower than the camera's aspect the camera's sides are off-screen.
+ */
+fun frameWidthShare(viewW: Int, viewH: Int, camW: Int, camH: Int): Float {
+    if (viewW <= 0 || viewH <= 0 || camW <= 0 || camH <= 0) return FRAME_FRACTION
+    val view = viewW.toFloat() / viewH
+    val cam = camW.toFloat() / camH
+    return FRAME_FRACTION * if (view < cam) view / cam else 1f
+}
+
+/** The frame sits this share of the screen height above centre (between the top bar and the controls). Matches Scanner.tsx. */
+const val FRAME_SHIFT = 0.06f
+
+/** Vertical centre of the on-screen frame as a share of the (upright) camera frame's height. */
+fun frameCenterShare(viewW: Int, viewH: Int, camW: Int, camH: Int): Float {
+    if (viewW <= 0 || viewH <= 0 || camW <= 0 || camH <= 0) return 0.5f - FRAME_SHIFT
+    val scale = maxOf(viewW.toFloat() / camW, viewH.toFloat() / camH) // FILL_CENTER: camera px → screen px
+    return 0.5f - FRAME_SHIFT * viewH / (scale * camH)
+}
+
 sealed interface Outcome {
     data class Match(val top: Prediction, val others: List<Prediction>) : Outcome
     data class Unsure(val candidates: List<Prediction>) : Outcome

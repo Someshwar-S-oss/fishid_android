@@ -15,12 +15,39 @@
     ]
   },
   "atule_mate": {
-    "common_name": "Yellowtail Scad"
+    "common_name": "Yellowtail Scad",
+    "distribution": "Tamil Nadu and Kerala coasts and the Andamans; also Chilika Lake and the Godavari estuary",
+    "field_marks": [
+      "Olive-green back shading to silvery-white belly",
+      "Black spot, slightly smaller than the eye, on the upper edge of the gill cover",
+      "Dorsal and tail fins dusky greenish-yellow; anal fin pale yellow",
+      "Last dorsal and anal rays finlet-like but attached (no separate finlets)",
+      "36–49 bony scutes on the straight rear part of the lateral line",
+      "Adipose eyelid covers the eye except for a vertical slit over the pupil"
+    ]
   },
   "lutjanus_quinquelineatus": {
-    "common_name": "Five-lined Snapper"
+    "common_name": "Five-lined Snapper",
+    "distribution": "Indian seas; Indo-West Pacific from the Persian Gulf to Fiji",
+    "field_marks": [
+      "Bright yellow body, fins yellow too",
+      "Series of blue horizontal stripes along the side",
+      "Round black spot, eye-sized or larger, below the front soft dorsal rays, mostly above the lateral line",
+      "Steeply sloping head profile",
+      "Clear notch and knob on the rear edge of the gill-cover bone",
+      "Tail nearly squared off (truncate)"
+    ]
   },
   "megalaspis_cordyla": {
-    "common_name": "Torpedo Scad"
+    "common_name": "Torpedo Scad",
+    "distribution": "Coastal waters of India; also Chilika Lake (Odisha)",
+    "field_marks": [
+      "Slender torpedo-shaped body; bluish-grey to green back, silvery sides and belly, dark fins",
+      "Large black spot on the upper rear edge of the gill cover",
+      "Row of separate finlets behind the dorsal (7–9) and anal (8–10) fins",
+      "Very large, strong scutes (51–59) along the whole lateral line",
+      "Strongly flattened tail stalk with a central keel; forked tail",
+      "Adipose eyelid covers the eye except for a vertical slit"
+    ]
   }
 }

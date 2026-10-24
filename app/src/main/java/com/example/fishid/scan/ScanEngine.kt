@@ -1,4 +1,4 @@
-package com.example.fishid.ui.scan
+package com.example.fishid.scan
 
 import android.app.ActivityManager
 import android.content.Context
@@ -11,9 +11,6 @@ import android.os.PowerManager
 import android.os.SystemClock
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.exifinterface.media.ExifInterface
 import com.example.fishid.data.Candidate
@@ -21,6 +18,8 @@ import com.example.fishid.data.Catalog
 import com.example.fishid.data.History
 import com.example.fishid.data.ScanRecord
 import com.example.fishid.ml.Classifier
+import com.example.fishid.ml.FRAME_FRACTION
+import com.example.fishid.ml.FRAME_SHIFT
 import com.example.fishid.ml.LiveLock
 import com.example.fishid.ml.Outcome
 import com.example.fishid.ml.Prediction
@@ -39,8 +38,8 @@ fun Context.setScanModeSetting(mode: ScanMode) =
     getSharedPreferences("fishid", Context.MODE_PRIVATE).edit().putString("scan_mode", mode.name).apply()
 
 /**
- * Camera frame → classifier → scan state. Frames arrive on the analyzer thread; every Compose
- * state write is posted to the main thread. Gallery images go through [identifyBitmap] on the
+ * Camera frame → classifier → scan state. Frames arrive on the analyzer thread; every state change is
+ * posted to the main thread and reported through [onChange]. Gallery images go through [identifyBitmap] on the
  * same single-thread executor, so the (non-thread-safe) classifier is only touched by one thread.
  */
 class ScanEngine(private val context: Context, val analyzerExecutor: Executor) : ImageAnalysis.Analyzer {
@@ -51,19 +50,28 @@ class ScanEngine(private val context: Context, val analyzerExecutor: Executor) :
     @Volatile private var paused = false
     @Volatile var classifier: Classifier? = null
 
-    /** Live unless the setting or the measured speed says tap. */
-    var live by mutableStateOf(initialLive())
-        private set
-    var holding by mutableStateOf(false)
-        private set
-    var identifying by mutableStateOf(false)
-        private set
-    var switchedToTap by mutableStateOf(false) // show the one-time notice
-    var result by mutableStateOf<ScanRecord?>(null)
-        private set
+    /** Share of each camera frame's width the model sees: the on-screen frame (set by the camera view). */
+    @Volatile var cropWidth = FRAME_FRACTION
 
-    /** Unsure / no-match results go to their own screens. */
-    var onElsewhere: (ScanRecord) -> Unit = {}
+    /** Vertical centre of the crop as a share of the frame height (the on-screen frame sits above centre). */
+    @Volatile var cropCenterY = 0.5f - FRAME_SHIFT
+
+    /** Called on the main thread whenever [live], [holding], [identifying] or [switchedToTap] change. */
+    var onChange: () -> Unit = {}
+
+    /** Called on the main thread with every finished scan (match, unsure or none), already saved to history. */
+    var onResult: (ScanRecord) -> Unit = {}
+
+    /** Live unless the setting or the measured speed says tap. */
+    var live = initialLive()
+        private set(v) { field = v; onChange() }
+    var holding = false
+        private set(v) { if (field != v) { field = v; onChange() } }
+    var identifying = false
+        private set(v) { field = v; onChange() }
+    var switchedToTap = false // show the one-time notice
+        private set(v) { field = v; onChange() }
+    private var showingResult = false
 
     private fun initialLive(): Boolean = when (context.scanModeSetting()) {
         ScanMode.LIVE -> true
@@ -79,13 +87,13 @@ class ScanEngine(private val context: Context, val analyzerExecutor: Executor) :
     }
 
     fun shutter() {
-        if (identifying || result != null) return
+        if (identifying || showingResult) return
         identifying = true
         tapRequested.set(true)
     }
 
     fun scanAgain() {
-        result = null
+        showingResult = false
         lock.reset()
         holding = false
         paused = false
@@ -97,7 +105,7 @@ class ScanEngine(private val context: Context, val analyzerExecutor: Executor) :
             if (paused) return
             val tap = tapRequested.getAndSet(false)
             if (!live && !tap) return
-            val frame = it.toBitmap().upright(it.imageInfo.rotationDegrees).bracketArea()
+            val frame = it.toBitmap().upright(it.imageInfo.rotationDegrees).bracketArea(cropWidth, cropCenterY)
             val t0 = SystemClock.elapsedRealtime()
             val preds = c.classify(frame)
             val now = SystemClock.elapsedRealtime()
@@ -118,6 +126,8 @@ class ScanEngine(private val context: Context, val analyzerExecutor: Executor) :
         }
     }
 
+    fun dismissTapNotice() { switchedToTap = false }
+
     private fun measure(ms: Long) {
         if (context.scanModeSetting() != ScanMode.AUTO || latencies.size > 15) return
         latencies += ms
@@ -128,9 +138,7 @@ class ScanEngine(private val context: Context, val analyzerExecutor: Executor) :
         }
     }
 
-    fun thresholdFor(id: String): Float = threshold(id)
-
-    private fun threshold(id: String): Float =
+    fun threshold(id: String): Float =
         Catalog.get(context).species.firstOrNull { it.id == id }?.confidenceThreshold ?: classifier?.info?.defaultThreshold ?: 0.7f
 
     /** For gallery photos: run on [analyzerExecutor]. */
@@ -159,12 +167,9 @@ class ScanEngine(private val context: Context, val analyzerExecutor: Executor) :
         main.execute {
             identifying = false
             holding = false
-            if (record.outcome == ScanRecord.Outcome.MATCH) {
-                result = record
-            } else {
-                scanAgain() // camera keeps running underneath the next screen
-                onElsewhere(record)
-            }
+            if (record.outcome == ScanRecord.Outcome.MATCH) showingResult = true
+            else scanAgain() // camera keeps running underneath the next screen
+            onResult(record)
         }
     }
 }
@@ -175,14 +180,12 @@ class ScanEngine(private val context: Context, val analyzerExecutor: Executor) :
  */
 const val BRACKET_ASPECT = 4f / 3f
 
-/** Share of the camera frame's width inside the brackets (preview FILL_CENTER trims the sides a little). */
-private const val BRACKET_WIDTH = 0.88f
-
-/** ponytail: approximates the bracket box in frame pixels; map exactly through PreviewView if framing feels off. */
-fun Bitmap.bracketArea(): Bitmap {
-    val w = (width * BRACKET_WIDTH).toInt()
+/** The [BRACKET_ASPECT] box [widthShare] of this frame's width wide, centred at [centerY] of its height (see frameWidthShare). */
+fun Bitmap.bracketArea(widthShare: Float, centerY: Float): Bitmap {
+    val w = (width * widthShare).toInt().coerceIn(1, width)
     val h = minOf(height, (w / BRACKET_ASPECT).toInt())
-    return Bitmap.createBitmap(this, (width - w) / 2, (height - h) / 2, w, h)
+    val top = (height * centerY - h / 2f).toInt().coerceIn(0, height - h)
+    return Bitmap.createBitmap(this, (width - w) / 2, top, w, h)
 }
 
 /** The whole frame, rotated upright. Cropping (if any) is the model's call: see InputSpec.resize. */

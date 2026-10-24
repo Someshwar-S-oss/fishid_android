@@ -7,6 +7,10 @@ import com.example.fishid.ml.Outcome
 import com.example.fishid.ml.Prediction
 import com.example.fishid.ml.aggregate
 import com.example.fishid.ml.decide
+import com.example.fishid.ml.FRAME_FRACTION
+import com.example.fishid.ml.frameWidthShare
+import com.example.fishid.ml.FRAME_SHIFT
+import com.example.fishid.ml.frameCenterShare
 import com.example.fishid.ml.prefersTapMode
 import com.example.fishid.ml.softmax
 import com.example.fishid.ml.validateModel
@@ -71,5 +75,17 @@ class ScanLogicTest {
         assertNotNull(validateModel(info, 3, setOf("a"), 1, 2))        // label not in data
         assertNotNull(validateModel(info, 3, setOf("a", "b"), 1, 1))   // data too old
         assertNotNull(validateModel(info.copy(minAppVersion = 9), 3, setOf("a", "b"), 1, 2))
+    }
+
+    @Test fun frameCropFollowsWhatThePreviewShows() {
+        // 1080x2400 phone, 720x1280 upright camera: preview shows 0.8 of the camera width.
+        assertEquals(FRAME_FRACTION * 0.8f, frameWidthShare(1080, 2400, 720, 1280), 1e-4f)
+        // View wider than the camera (tablet): camera width fully visible, top/bottom cropped instead.
+        assertEquals(FRAME_FRACTION, frameWidthShare(1600, 2000, 720, 1280), 1e-4f)
+        assertEquals(FRAME_FRACTION, frameWidthShare(0, 0, 720, 1280), 1e-4f) // not laid out yet
+        // Phone: the camera's full height is on screen, so the shift carries over as-is.
+        assertEquals(0.5f - FRAME_SHIFT, frameCenterShare(1080, 2400, 720, 1280), 1e-4f)
+        // Tablet: the camera's top and bottom are off-screen, so the same screen shift is a smaller share of it.
+        assertEquals(0.5f - FRAME_SHIFT * 2000f / (1600f / 720 * 1280), frameCenterShare(1600, 2000, 720, 1280), 1e-4f)
     }
 }

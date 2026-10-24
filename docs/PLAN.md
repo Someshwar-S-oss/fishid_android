@@ -346,3 +346,12 @@ Implementation notes (deviations from §8):
 **Professor's team:** filled spreadsheet (all species) · Tamil scientific + local names · romanised local names · 2+ reference photos per species · price source and how often it's updated · About/credits text + institution logo (optional).
 **Translator:** `i18n/ui.en.json` now; `data/text.en.json` once the spreadsheet is filled.
 **Later:** backend for reports (folder format is ready for it), hosting URL for the update manifest.
+
+## 12. React Native UI (branch `react-native-ui`)
+
+The Compose UI is replaced by React Native 0.88 (new architecture, Hermes). Kotlin keeps the model and data layer unchanged in behaviour: `ml/` (Classifier, ScanLogic), `data/` (Catalog, History, Reports), `scan/ScanEngine.kt` (Compose state swapped for listeners).
+- `bridge/FishIdBridge.kt` is the only seam: module `FishID` (catalog/search, history, reports, prefs, language, gallery pick, shutter/torch) + view `FishCameraView` (CameraX preview running ScanEngine). Data crosses as the same snake_case JSON as the asset files.
+- JS lives at the repo root: `index.js`, `src/` (App shell + stack nav, `ui.tsx` components, `screens/`). UI text still comes only from `i18n/*.json`; new keys were added in English only.
+- Design: Cal AI (cream, black pills, ring stats, photo-on-top result sheet) in light; Pillowtalk-style night blues in dark.
+
+Run: `npm install`, then `npm start` (Metro) and `./gradlew installDebug` (or Run in Android Studio). Release builds bundle the JS: `./gradlew assembleRelease`.

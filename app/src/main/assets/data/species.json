@@ -1,6 +1,6 @@
 {
-  "data_version": 2,
-  "updated": "2026-10-22",
+  "data_version": 3,
+  "updated": "2026-10-24",
   "species": [
     {
       "id": "scolopsis_bimaculata",
@@ -48,7 +48,35 @@
       "images": [
         "atule_mate_1.jpg",
         "atule_mate_2.jpg"
-      ]
+      ],
+      "meristics": {
+        "dorsal_spines": 9,
+        "dorsal_rays": 22,
+        "anal_spines": 3,
+        "anal_rays": 18
+      },
+      "habitat": [
+        "marine",
+        "brackish",
+        "reef_associated"
+      ],
+      "feeding": "planktivore",
+      "vertical": "pelagic",
+      "depth_m": [
+        1,
+        80
+      ],
+      "iucn": "lc",
+      "nutrition_g": {
+        "protein": 19.01,
+        "fat": 5.75,
+        "moisture": 73.49,
+        "ash": 1.47,
+        "carbohydrate": 0.28
+      },
+      "price_inr_per_kg": 272,
+      "price_updated": "2023",
+      "source": "FishBase (Froese & Pauly 2025); nutrition: Letourneur et al. 2026, J. Appl. Ichthyol.; price: CMFRI MFIS T&E Ser. 261 (2024), Tamil Nadu retail average for scads"
     },
     {
       "id": "lutjanus_quinquelineatus",
@@ -56,14 +84,67 @@
       "images": [
         "lutjanus_quinquelineatus_1.jpg",
         "lutjanus_quinquelineatus_2.jpg"
-      ]
+      ],
+      "meristics": {
+        "dorsal_spines": 10,
+        "dorsal_rays": 13,
+        "anal_spines": 3,
+        "anal_rays": 8
+      },
+      "habitat": [
+        "marine",
+        "reef_associated"
+      ],
+      "feeding": "carnivore",
+      "vertical": "reef",
+      "depth_m": [
+        2,
+        40
+      ],
+      "iucn": "lc",
+      "nutrition_g": {
+        "protein": 21.46,
+        "fat": 3.43,
+        "moisture": 75.75,
+        "ash": 1.81,
+        "carbohydrate": 0.04
+      },
+      "price_inr_per_kg": 259,
+      "price_updated": "2024",
+      "source": "FishBase (Froese & Pauly 2025); nutrition: Palani Kumar et al. 2014, J. Nutr. Food Sci. 4:259 (Thoothukudi); price: Charles Jeeva et al. 2026, Indian J. Fish. 73(2), Puducherry retail average for snappers"
     },
     {
       "id": "megalaspis_cordyla",
       "scientific_name": "Megalaspis cordyla",
       "images": [
         "megalaspis_cordyla_1.jpg"
-      ]
+      ],
+      "meristics": {
+        "dorsal_spines": 9,
+        "dorsal_rays": 18,
+        "anal_spines": 3,
+        "anal_rays": 16
+      },
+      "habitat": [
+        "marine",
+        "brackish",
+        "reef_associated"
+      ],
+      "feeding": "carnivore",
+      "vertical": "pelagic",
+      "depth_m": [
+        20,
+        100
+      ],
+      "iucn": "lc",
+      "nutrition_g": {
+        "protein": 21.0,
+        "fat": 1.3,
+        "moisture": 75.4
+      },
+      "price_inr_per_kg": 226,
+      "price_updated": "2024",
+      "source": "FishBase (Froese & Pauly 2025); nutrition: Nordhagen et al. 2020, Foods 9(6):730 (Bay of Bengal); price: Charles Jeeva et al. 2026, Indian J. Fish. 73(2), Puducherry retail average for horse mackerel"
     }
   ]
 }

@@ -3,8 +3,8 @@ package com.example.fishid
 import com.example.fishid.data.Catalog
 import com.example.fishid.ml.ModelInfo
 import com.example.fishid.ml.validateModel
-import com.example.fishid.ui.primaryName
-import com.example.fishid.ui.secondaryName
+import com.example.fishid.data.primaryName
+import com.example.fishid.data.secondaryName
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -30,6 +30,14 @@ class CatalogTest {
         assertEquals(ta.species.localNameTa, ta.primaryName(tamil = true))
         assertEquals("Thumbprint Monocle Bream", ta.secondaryName(tamil = true))
         assertEquals(ta.species.localNameTa, ta.secondaryName(tamil = false))
+    }
+
+    @Test fun everyBundledSpeciesHasCoreFacts() {
+        catalog.species.forEach {
+            assertTrue("${it.id} nutrition", it.nutritionG != null)
+            assertTrue("${it.id} meristics", it.meristics != null)
+            assertTrue("${it.id} field marks", catalog.entry(it.id, "en")!!.fieldMarks.isNotEmpty())
+        }
     }
 
     /** A dropped-in model.json whose labels aren't in species.json (or needs newer data) fails here, not on a phone. */
