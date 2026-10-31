@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Fish, FishID } from '../native';
 import { grams, rupees } from '../i18n';
 import { Chip, FishImage, Icon, Tap, Txt, useApp } from '../ui';
+import { Reveal, stagger } from '../motion';
 import { font } from '../theme';
 
 type Sort = 'name' | 'low' | 'high';
@@ -69,8 +70,9 @@ export default function Guide() {
       columnWrapperStyle={{ gap: 14 }}
       contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40, gap: 18 }}
       keyboardShouldPersistTaps="handled"
-      renderItem={({ item: f }) => (
-        <Tap onPress={() => push({ name: 'profile', id: f.id })} style={{ flex: 1, maxWidth: '50%' }} accessibilityRole="button" accessibilityLabel={f.primary_name}>
+      renderItem={({ item: f, index }) => (
+        <Reveal delay={stagger(index, 45)} style={{ flex: 1, maxWidth: '50%' }}>
+        <Tap onPress={() => push({ name: 'profile', id: f.id })} accessibilityRole="button" accessibilityLabel={f.primary_name}>
           <View>
             <FishImage uri={f.image_uris[0]} style={{ aspectRatio: 0.92 }} radius={22} />
             <View style={{ position: 'absolute', left: 8, bottom: 8, right: 8, flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
@@ -81,6 +83,7 @@ export default function Guide() {
           <Txt v="title" numberOfLines={2} style={{ marginTop: 8 }}>{f.primary_name}</Txt>
           {f.secondary_name ? <Txt v="caption" muted numberOfLines={1}>{f.secondary_name}</Txt> : null}
         </Tap>
+        </Reveal>
       )}
     />
   );

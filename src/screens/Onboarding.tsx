@@ -1,13 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, PermissionsAndroid, View } from 'react-native';
+import { Animated, Easing, LayoutAnimation, PermissionsAndroid, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Btn, Card, Icon, IconName, Tap, Txt, useApp } from '../ui';
+import { Bubbles, Pop, useLoop } from '../motion';
 
 // S1: language → Scan / Identify / Learn → camera permission (explained before the system dialog).
 export default function Onboarding({ onDone }: { onDone: () => void }) {
   const { c, t, lang, setLang } = useApp();
   const insets = useSafeAreaInsets();
-  const [step, setStep] = useState(0);
+  const [step, setStepNow] = useState(0);
+  // The progress dots stretch and shrink into place instead of jumping.
+  const setStep = (s: number) => { LayoutAnimation.configureNext(LayoutAnimation.create(260, 'easeInEaseOut', 'opacity')); setStepNow(s); };
   const slides: [IconName, string, string, string][] = [
     ['scan', t('onboarding_scan_title'), t('onboarding_scan_body'), c.marigold],
     ['sparkle', t('onboarding_identify_title'), t('onboarding_identify_body'), c.accent],
@@ -31,7 +34,7 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
   if (step === 0) {
     body = (
       <>
-        <Art icon="globe" tint={c.accent} />
+        <Art key={step} icon="globe" tint={c.accent} />
         <Txt v="display" style={{ textAlign: 'center' }}>{t('onboarding_language_title')}</Txt>
         <View style={{ gap: 12, marginTop: 28, alignSelf: 'stretch' }}>
           {(['en', 'ta'] as const).map(l => {
@@ -53,7 +56,7 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
     const [icon, title, text, tint] = slides[step - 1];
     body = (
       <>
-        <Art icon={icon} tint={tint} />
+        <Art key={step} icon={icon} tint={tint} />
         <Txt v="hero" style={{ textAlign: 'center' }}>{title}</Txt>
         <Txt v="title" muted style={{ textAlign: 'center', marginTop: 12, fontWeight: '400' }}>{text}</Txt>
       </>
@@ -61,7 +64,7 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
   } else {
     body = (
       <>
-        <Art icon="camera" tint={c.success} />
+        <Art key={step} icon="camera" tint={c.success} />
         <Txt v="display" style={{ textAlign: 'center' }}>{t('permission_camera_title')}</Txt>
         <Txt v="title" muted style={{ textAlign: 'center', marginTop: 12, fontWeight: '400' }}>{t('permission_camera_body')}</Txt>
       </>
@@ -97,25 +100,23 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
   );
 }
 
-/** Soft glowing disc with a big icon (Pillowtalk-style illustration). */
+/** Soft glowing disc with a big icon (Pillowtalk-style illustration): the icon springs in, two dots orbit, bubbles drift up. */
 function Art({ icon, tint }: { icon: IconName; tint: string }) {
-  const pulse = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    const loop = Animated.loop(Animated.sequence([
-      Animated.timing(pulse, { toValue: 1, duration: 1800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      Animated.timing(pulse, { toValue: 0, duration: 1800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-    ]));
-    loop.start();
-    return () => loop.stop();
-  }, [pulse]);
+  const pulse = useLoop(1800);
+  const orbit = useLoop(9000, false);
+  const spin = (from: number) => ({ transform: [{ rotate: orbit.interpolate({ inputRange: [0, 1], outputRange: [`${from}deg`, `${from + 360}deg`] }) }] });
+  const dot = (size: number, color: string) => <View style={{ position: 'absolute', top: 0, left: 110 - size / 2, width: size, height: size, borderRadius: size, backgroundColor: color }} />;
   return (
     <View style={{ width: 220, height: 220, alignItems: 'center', justifyContent: 'center', marginBottom: 36 }}>
       <Animated.View style={{ position: 'absolute', width: 220, height: 220, borderRadius: 110, backgroundColor: tint + '1F', transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1.04] }) }] }} />
-      <View style={{ width: 150, height: 150, borderRadius: 75, backgroundColor: tint + '33', alignItems: 'center', justifyContent: 'center' }}>
-        <View style={{ width: 96, height: 96, borderRadius: 48, backgroundColor: tint, alignItems: 'center', justifyContent: 'center' }}>
+      <Bubbles color={tint} height={200} spots={[0.18, 0.3, 0.72, 0.82]} />
+      <Animated.View style={[{ position: 'absolute', width: 220, height: 220 }, spin(0)]}>{dot(12, tint)}</Animated.View>
+      <Animated.View style={[{ position: 'absolute', width: 220, height: 220 }, spin(160)]}>{dot(8, tint + '99')}</Animated.View>
+      <Pop style={{ width: 150, height: 150, borderRadius: 75, backgroundColor: tint + '33', alignItems: 'center', justifyContent: 'center' }}>
+        <Pop delay={90} style={{ width: 96, height: 96, borderRadius: 48, backgroundColor: tint, alignItems: 'center', justifyContent: 'center', boxShadow: `0px 10px 28px ${tint}66` }}>
           <Icon name={icon} size={48} color="#fff" stroke={2.2} />
-        </View>
-      </View>
+        </Pop>
+      </Pop>
     </View>
   );
 }

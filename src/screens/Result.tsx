@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FishID, fileUri, Scan } from '../native';
 import { grams, kcal, percent, rupees } from '../i18n';
 import { Bar, Btn, Card, Chip, CircleBtn, FishImage, Icon, Scientific, StatTile, Tap, Txt, useApp } from '../ui';
+import { Burst, CountUp, Float, Pop, Reveal, Ring, stagger } from '../motion';
 
 const useScan = (scanId: string): Scan | undefined => useApp().history.find(s => s.id === scanId);
 
@@ -39,42 +40,46 @@ export function Result({ scanId }: { scanId: string }) {
         <View style={{ height: photoH }}>
           <FishImage uri={fileUri(scan.photo)} style={{ flex: 1 }} radius={0} />
           {/* Floating labels on the photo, like Cal AI's "Pancakes 595". */}
-          {f.price_inr_per_kg != null && <Floating style={{ right: 16, bottom: 56 }} title={t('price_unit_per_kg')} value={rupees(f.price_inr_per_kg)} />}
-          {n && <Floating style={{ left: 16, bottom: 104 }} title={t('nutrition_protein')} value={`${grams(n.protein)} g`} />}
+          {f.price_inr_per_kg != null && <Floating delay={450} style={{ right: 16, bottom: 56 }} title={t('price_unit_per_kg')} value={rupees(f.price_inr_per_kg)} />}
+          {n && <Floating delay={600} style={{ left: 16, bottom: 104 }} title={t('nutrition_protein')} value={`${grams(n.protein)} g`} />}
         </View>
 
         <Animated.View style={{ marginTop: -32, backgroundColor: c.bg, borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 20, opacity: rise, transform: [{ translateY: rise.interpolate({ inputRange: [0, 1], outputRange: [80, 0] }) }] }}>
-          <Chip
-            icon="check"
-            label={t('result_match_percent', { label: t(high ? 'result_match_high' : 'result_match_likely'), percent: percent(conf) })}
-            bg={high ? c.successSoft : c.warnSoft}
-            fg={high ? c.success : c.warn}
-          />
+          <View style={{ alignSelf: 'flex-start' }}>
+            <Chip
+              icon="check"
+              label={t('result_match_percent', { label: t(high ? 'result_match_high' : 'result_match_likely'), percent: percent(conf) })}
+              bg={high ? c.successSoft : c.warnSoft}
+              fg={high ? c.success : c.warn}
+            />
+            {high && <View style={{ position: 'absolute', left: 19, top: '50%' }}><Burst color={c.success} /></View>}
+          </View>
           <Txt v="display" style={{ marginTop: 10 }}>{f.primary_name}</Txt>
           {f.secondary_name ? <Txt v="title" muted style={{ fontWeight: '500' }}>{f.secondary_name}</Txt> : null}
           <Scientific>{f.scientific_name}</Scientific>
 
-          <View style={{ flexDirection: 'row', gap: 10, marginTop: 18 }}>
+          <Reveal delay={220} style={{ flexDirection: 'row', gap: 10, marginTop: 18 }}>
             <StatTile icon="flame" tint={c.energy} label={t('nutrition_energy')} value={n ? t('nutrition_kcal', { kcal: kcal(n) }) : '–'} />
             <StatTile icon="price" tint={c.accent} label={t('price_title')} value={f.price_inr_per_kg != null ? rupees(f.price_inr_per_kg) : '–'} />
-          </View>
-          <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+          </Reveal>
+          <Reveal delay={300} style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
             <StatTile icon="bolt" tint={c.protein} label={t('nutrition_protein')} value={n ? t('nutrition_grams', { grams: grams(n.protein) }) : '–'} />
             <StatTile icon="drop" tint={c.fat} label={t('nutrition_fat')} value={n ? t('nutrition_grams', { grams: grams(n.fat) }) : '–'} />
-          </View>
+          </Reveal>
 
-          <Card style={{ marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-            <View style={{ width: 42, height: 42, borderRadius: 14, backgroundColor: c.successSoft, alignItems: 'center', justifyContent: 'center' }}>
-              <Icon name="sparkle" size={22} color={c.success} />
-            </View>
-            <View style={{ flex: 1, gap: 8 }}>
-              <View style={{ flexDirection: 'row' }}>
-                <Txt v="label" style={{ flex: 1 }}>{t('result_match_score')}</Txt>
-                <Txt v="label" style={{ fontWeight: '700' }}>{`${percent(conf)}%`}</Txt>
+          {/* Match score as a ring that sweeps round while the number counts up. */}
+          <Reveal delay={380}>
+            <Card style={{ marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+              <Ring value={conf} color={high ? c.success : c.marigold} track={c.surfaceAlt} size={66} stroke={7}>
+                <CountUp value={percent(conf)} format={x => `${Math.round(x)}%`} v="label" style={{ fontWeight: '700' }} />
+              </Ring>
+              <View style={{ flex: 1 }}>
+                <Txt v="title">{t('result_match_score')}</Txt>
+                <Txt v="caption" muted>{t(high ? 'result_match_high' : 'result_match_likely')}</Txt>
               </View>
-              <Bar value={conf} color={high ? c.success : c.marigold} />
-            </View>
-          </Card>
+              <Icon name="sparkle" size={22} color={high ? c.success : c.marigold} />
+            </Card>
+          </Reveal>
 
           <Tap onPress={() => push({ name: 'report', scanId })} style={{ alignSelf: 'center', flexDirection: 'row', gap: 6, alignItems: 'center', padding: 14, marginTop: 6 }}>
             <Icon name="flag" size={16} color={c.muted} />
@@ -96,12 +101,17 @@ export function Result({ scanId }: { scanId: string }) {
   );
 }
 
-function Floating({ title, value, style }: { title: string; value: string; style: object }) {
+/** Label that lands on the photo with a spring, then hovers slightly. */
+function Floating({ title, value, style, delay }: { title: string; value: string; style: object; delay: number }) {
   return (
-    <View style={[{ position: 'absolute', backgroundColor: '#fff', borderRadius: 18, paddingHorizontal: 16, paddingVertical: 8, alignItems: 'center', boxShadow: '0px 8px 24px rgba(0,0,0,0.18)' }, style]}>
-      <Txt v="label" color="#111" style={{ fontWeight: '700' }}>{title}</Txt>
-      <Txt v="title" color="#111" style={{ fontWeight: '700' }}>{value}</Txt>
-    </View>
+    <Pop delay={delay} style={[{ position: 'absolute' }, style]}>
+      <Float range={3} tilt={0} duration={2400 + delay}>
+        <View style={{ backgroundColor: '#fff', borderRadius: 18, paddingHorizontal: 16, paddingVertical: 8, alignItems: 'center', boxShadow: '0px 8px 24px rgba(0,0,0,0.18)' }}>
+          <Txt v="label" color="#111" style={{ fontWeight: '700' }}>{title}</Txt>
+          <Txt v="title" color="#111" style={{ fontWeight: '700' }}>{value}</Txt>
+        </View>
+      </Float>
+    </Pop>
   );
 }
 
@@ -134,8 +144,9 @@ export function Compare({ scanId }: { scanId: string }) {
       <Txt muted style={{ marginTop: 10 }}>{t('low_confidence_body')}</Txt>
 
       <View style={{ gap: 14, marginTop: 18 }}>
-        {candidates.map(({ f, conf }) => (
-          <Card key={f.id} style={{ padding: 14 }}>
+        {candidates.map(({ f, conf }, i) => (
+          <Reveal key={f.id} delay={120 + stagger(i, 90)}>
+          <Card style={{ padding: 14 }}>
             <View style={{ flexDirection: 'row', gap: 14 }}>
               <FishImage uri={f.image_uris[0]} style={{ width: 110, height: 110 }} radius={18} />
               <View style={{ flex: 1, gap: 2 }}>
@@ -156,6 +167,7 @@ export function Compare({ scanId }: { scanId: string }) {
             ))}
             <Btn label={t('low_confidence_pick')} small onPress={() => choose(f.id)} style={{ marginTop: 14 }} />
           </Card>
+          </Reveal>
         ))}
       </View>
       <Btn label={t('low_confidence_none')} kind="outline" onPress={() => { pop(); push({ name: 'report', scanId }); }} style={{ marginTop: 18 }} />
@@ -176,20 +188,20 @@ export function NoMatch({ scanId }: { scanId: string }) {
       <View style={{ alignItems: 'center', marginTop: 12 }}>
         <View>
           <FishImage uri={scan ? fileUri(scan.photo) : null} style={{ width: 180, height: 180 }} radius={36} />
-          <View style={{ position: 'absolute', right: -8, bottom: -8, width: 52, height: 52, borderRadius: 26, backgroundColor: c.warnSoft, borderWidth: 4, borderColor: c.bg, alignItems: 'center', justifyContent: 'center' }}>
+          <Pop delay={250} style={{ position: 'absolute', right: -8, bottom: -8, width: 52, height: 52, borderRadius: 26, backgroundColor: c.warnSoft, borderWidth: 4, borderColor: c.bg, alignItems: 'center', justifyContent: 'center' }}>
             <Icon name="info" size={24} color={c.warn} />
-          </View>
+          </Pop>
         </View>
         <Txt v="display" style={{ textAlign: 'center', marginTop: 20 }}>{t('no_match_title')}</Txt>
       </View>
       <Card style={{ marginTop: 20, gap: 14 }}>
-        {tips.map(k => (
-          <View key={k} style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+        {tips.map((k, i) => (
+          <Reveal key={k} delay={200 + i * 70} from={10} style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
             <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
               <Icon name="check" size={18} color={c.accent} stroke={2.6} />
             </View>
             <Txt style={{ flex: 1 }}>{t(k)}</Txt>
-          </View>
+          </Reveal>
         ))}
       </Card>
       <Btn label={t('action_retry')} icon="scan" onPress={leave} style={{ marginTop: 20 }} />

@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Fish, FishID, fileUri, Scan } from '../native';
 import { formatTime, grams, percent, rupees } from '../i18n';
 import { Card, CircleBtn, FishImage, Icon, IconName, LanguageSwitch, Logo, routeForScan, SectionTitle, Tap, Txt, useApp } from '../ui';
+import { Bubbles, FishArt, Float, Reveal, stagger, Waves } from '../motion';
 
 const BRAND = '#0E6E7E';
 const PRICE_ROWS = 5;
@@ -36,11 +37,15 @@ export default function Home() {
         <CircleBtn icon="settings" label={t('action_settings')} onPress={() => push({ name: 'settings' })} />
       </View>
 
-      {/* Identify: the one thing most people open the app for. */}
-      <View style={{ marginTop: 20, borderRadius: 28, padding: 22, backgroundColor: BRAND, overflow: 'hidden' }}>
-        <View style={{ position: 'absolute', right: -24, top: -18, opacity: 0.16 }} pointerEvents="none">
-          <Icon name="fish" size={170} color="#FFFFFF" stroke={1.4} />
-        </View>
+      {/* Identify: the one thing most people open the app for. Water drifts along the bottom, a fish floats in the corner. */}
+      <Reveal delay={40}>
+      <View style={{ marginTop: 20, borderRadius: 28, padding: 22, paddingBottom: 26, backgroundColor: BRAND, overflow: 'hidden', backgroundImage: 'linear-gradient(160deg, #13889A, #0E6E7E 55%, #0A5663)' }}>
+        <View style={{ position: 'absolute', right: -60, top: -60, width: 200, height: 200, borderRadius: 100, backgroundColor: '#FFFFFF', opacity: 0.06 }} pointerEvents="none" />
+        <Bubbles height={170} />
+        <Waves height={64} />
+        <Float style={{ position: 'absolute', right: -18, top: 14, opacity: 0.16 }} range={5} tilt={4} duration={2600}>
+          <FishArt width={130} body="#FFFFFF" band="#FFFFFF" eye="#0E6E7E" />
+        </Float>
         <Txt v="display" color="#FFFFFF" style={{ maxWidth: '85%' }}>{t('home_scan_cta_title')}</Txt>
         <Txt color="#FFFFFF" style={{ opacity: 0.85, marginTop: 4, maxWidth: '92%' }}>{t('home_scan_cta_body')}</Txt>
         <View style={{ flexDirection: 'row', gap: 10, marginTop: 20 }}>
@@ -54,18 +59,27 @@ export default function Home() {
           </Tap>
         </View>
       </View>
+      </Reveal>
 
       {/* Look up a fish by name, in any script. */}
+      <Reveal delay={110}>
       <Tap onPress={() => home('guide')} accessibilityRole="search" scale={0.99}
         style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 14, minHeight: 56, borderRadius: 999, paddingHorizontal: 20, backgroundColor: c.surface, boxShadow: c.shadow }}>
         <Icon name="search" size={20} color={c.muted} />
         <Txt muted style={{ flex: 1 }} numberOfLines={1}>{t('catalogue_search_hint')}</Txt>
       </Tap>
+      </Reveal>
 
       <SectionTitle right={fish.length > PRICE_ROWS ? seeAll(() => home('guide')) : undefined}>{t('home_market_prices')}</SectionTitle>
-      <Card style={{ paddingVertical: 4 }}>
-        {priced.slice(0, PRICE_ROWS).map((f, i) => <PriceRow key={f.id} f={f} last={i === Math.min(PRICE_ROWS, priced.length) - 1} />)}
-      </Card>
+      <Reveal delay={180}>
+        <Card style={{ paddingVertical: 4 }}>
+          {priced.slice(0, PRICE_ROWS).map((f, i) => (
+            <Reveal key={f.id} delay={260 + stagger(i, 60)} from={10}>
+              <PriceRow f={f} last={i === Math.min(PRICE_ROWS, priced.length) - 1} />
+            </Reveal>
+          ))}
+        </Card>
+      </Reveal>
       <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginTop: 10, paddingHorizontal: 4 }}>
         <Icon name="info" size={16} color={c.muted} />
         <Txt v="caption" muted style={{ flex: 1 }}>{t('price_note')}</Txt>
@@ -75,12 +89,13 @@ export default function Home() {
         <>
           <SectionTitle right={history.length > 2 ? seeAll(() => home('history')) : undefined}>{t('home_recent')}</SectionTitle>
           <View style={{ gap: 12 }}>
-            {history.slice(0, 2).map(s => <ScanRow key={s.id} scan={s} />)}
+            {history.slice(0, 2).map((s, i) => <Reveal key={s.id} delay={400 + i * 70}><ScanRow scan={s} /></Reveal>)}
           </View>
         </>
       ) : (
         <>
           <SectionTitle>{t('home_how_it_works')}</SectionTitle>
+          <Reveal delay={400}>
           <Card style={{ gap: 18 }}>
             {([
               ['scan', c.marigold, 'onboarding_scan_title', 'onboarding_scan_body'],
@@ -98,6 +113,7 @@ export default function Home() {
               </View>
             ))}
           </Card>
+          </Reveal>
         </>
       )}
     </ScrollView>

@@ -3,6 +3,7 @@ import { ActivityIndicator, Animated, AppState, Easing, Linking, PermissionsAndr
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, FishID, useScanState } from '../native';
 import { Btn, CircleBtn, Icon, IconName, Tap, Txt, useApp } from '../ui';
+import { useAwake } from '../motion';
 
 const CAMERA = PermissionsAndroid.PERMISSIONS.CAMERA;
 /** The frame is the model's crop: FRAME_FRACTION of the screen width (ml/ScanLogic.kt) at BRACKET_ASPECT 4:3 (ScanEngine.kt). */
@@ -50,6 +51,13 @@ function Viewfinder({ onBack, showTapNotice, onTapNoticeSeen }: { onBack: () => 
   const [state, cameraError] = useScanState();
   const [torch, setTorch] = useState(false);
   const [picking, setPicking] = useState(false);
+  const flash = useRef(new Animated.Value(0)).current;
+  const shoot = () => {
+    // A quick white blink, like a camera shutter, so a tap visibly "took" the photo.
+    flash.setValue(0.55);
+    Animated.timing(flash, { toValue: 0, duration: 260, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
+    FishID.shutter();
+  };
 
   const live = state?.live ?? true;
   const holding = state?.holding ?? false;
@@ -67,6 +75,7 @@ function Viewfinder({ onBack, showTapNotice, onTapNoticeSeen }: { onBack: () => 
     <View style={{ flex: 1 }}>
       <CameraView style={StyleSheet.absoluteFill} />
       <ScanFrame mode={mode} hint={hint} />
+      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#fff', opacity: flash }]} />
 
       {/* Top: back · title. The live/tap mode lives in the tray, where long Tamil labels have room. */}
       <View style={{ position: 'absolute', top: insets.top + 8, left: 16, right: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -99,7 +108,7 @@ function Viewfinder({ onBack, showTapNotice, onTapNoticeSeen }: { onBack: () => 
         </View>
 
         <Tap
-          onPress={() => FishID.shutter()}
+          onPress={shoot}
           disabled={identifying}
           scale={0.9}
           accessibilityRole="button"
@@ -147,8 +156,9 @@ function ScanFrame({ mode, hint }: { mode: FrameMode; hint: string }) {
   const breathe = useRef(new Animated.Value(0)).current;
   const lock = useRef(new Animated.Value(0)).current;
   const pulse = useRef(new Animated.Value(1)).current;
+  const awake = useAwake(); // a result screen covers the scanner: stop sweeping behind it
   useEffect(() => {
-    if (mode !== 'search') return;
+    if (mode !== 'search' || !awake) return;
     sweep.setValue(0);
     const loops = [
       Animated.loop(Animated.sequence([
@@ -162,7 +172,7 @@ function ScanFrame({ mode, hint }: { mode: FrameMode; hint: string }) {
     ];
     loops.forEach(l => l.start());
     return () => { loops.forEach(l => l.stop()); breathe.setValue(0); };
-  }, [mode, sweep, breathe]);
+  }, [mode, sweep, breathe, awake]);
   useEffect(() => {
     Animated.spring(lock, { toValue: mode === 'hold' ? 1 : 0, useNativeDriver: true, speed: 16, bounciness: 12 }).start();
   }, [mode, lock]);

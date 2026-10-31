@@ -5,6 +5,7 @@ import { FishID, Scan } from '../native';
 import { formatDay } from '../i18n';
 import { Btn, Card, Icon, Tap, Txt, useApp } from '../ui';
 import { ScanRow } from './Home';
+import { Bubbles, FishArt, Float, Reveal, stagger } from '../motion';
 
 // S6: on-device scans grouped by day; tap to reopen, trash to delete, Clear all with confirmation.
 export default function History() {
@@ -49,11 +50,12 @@ export default function History() {
       }
       renderSectionHeader={({ section }) => <Txt v="title" muted style={{ marginTop: 22, marginBottom: 10 }}>{section.title}</Txt>}
       ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
-      renderItem={({ item }) => <ScanRow scan={item} onDelete={() => remove(item)} />}
+      renderItem={({ item, index }) => <Reveal delay={stagger(index)}><ScanRow scan={item} onDelete={() => remove(item)} /></Reveal>}
       ListEmptyComponent={
-        <Card style={{ alignItems: 'center', paddingVertical: 40, marginTop: 24 }}>
-          <View style={{ width: 84, height: 84, borderRadius: 42, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
-            <Icon name="history" size={40} color={c.accent} />
+        <Card style={{ alignItems: 'center', paddingVertical: 40, marginTop: 24, overflow: 'hidden' }}>
+          <View style={{ width: 160, height: 120, borderRadius: 60, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
+            <Bubbles color={c.accent} height={110} spots={[0.2, 0.75, 0.85]} />
+            <Float><FishArt width={120} body={c.accent} band={c.marigold} /></Float>
           </View>
           <Txt v="headline" style={{ marginTop: 14 }}>{t('history_empty_title')}</Txt>
           <Txt muted style={{ textAlign: 'center', marginBottom: 18 }}>{t('history_empty_body')}</Txt>

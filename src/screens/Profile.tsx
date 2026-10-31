@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { Dimensions, LayoutAnimation, ScrollView, Share, StatusBar, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Dimensions, LayoutAnimation, ScrollView, Share, StatusBar, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fileUri, Fish } from '../native';
 import { codeLabel, grams, kcal, rupees } from '../i18n';
 import { Card, Chip, CircleBtn, FishImage, Icon, IconName, IucnBadge, Scientific, StatTile, Tap, Txt, useApp } from '../ui';
+import { CountUp, easeOut, Reveal } from '../motion';
 
 // S4: shopper order — price and food value first, then how to recognise it, then ecology and names.
 export default function Profile({ id, scanId }: { id: string; scanId?: string }) {
@@ -12,6 +13,7 @@ export default function Profile({ id, scanId }: { id: string; scanId?: string })
   const f = fishById[id];
   const scan = scanId ? history.find(s => s.id === scanId) : undefined;
   const [page, setPage] = useState(0);
+  const scrollY = useRef(new Animated.Value(0)).current;
   if (!f) return null;
 
   const width = Dimensions.get('window').width;
@@ -21,8 +23,16 @@ export default function Profile({ id, scanId }: { id: string; scanId?: string })
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       <StatusBar barStyle="light-content" />
-      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}>
-        <View style={{ height: width * 0.92 }}>
+      <Animated.ScrollView
+        contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
+        scrollEventThrottle={16}
+        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}>
+        {/* Parallax: the photo scrolls at half speed and dims a little as the sheet slides over it. */}
+        <Animated.View style={{
+          height: width * 0.92,
+          opacity: scrollY.interpolate({ inputRange: [0, width * 0.8], outputRange: [1, 0.6], extrapolate: 'clamp' }),
+          transform: [{ translateY: scrollY.interpolate({ inputRange: [0, width], outputRange: [0, width * 0.5], extrapolate: 'clamp' }) }],
+        }}>
           <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} onMomentumScrollEnd={e => setPage(Math.round(e.nativeEvent.contentOffset.x / width))}>
             {(photos.length ? photos : [null]).map((uri, i) => (
               <FishImage key={i} uri={uri} style={{ width, height: width * 0.92 }} radius={0} />
@@ -38,7 +48,7 @@ export default function Profile({ id, scanId }: { id: string; scanId?: string })
               )}
             </View>
           )}
-        </View>
+        </Animated.View>
 
         <View style={{ marginTop: -32, backgroundColor: c.bg, borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingHorizontal: 20, paddingTop: 22 }}>
           <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
@@ -49,10 +59,10 @@ export default function Profile({ id, scanId }: { id: string; scanId?: string })
           {f.secondary_name ? <Txt v="title" muted style={{ fontWeight: '500' }}>{f.secondary_name}</Txt> : null}
           <Scientific>{f.scientific_name}</Scientific>
 
-          <PriceCard f={f} />
+          <Reveal delay={120}><PriceCard f={f} /></Reveal>
 
           {n && (
-            <>
+            <Reveal delay={220}>
               <Txt v="headline" style={{ marginTop: 28, marginBottom: 12 }}>{t('nutrition_title')}</Txt>
               <View style={{ flexDirection: 'row', gap: 10 }}>
                 <StatTile icon="flame" tint={c.energy} label={t('nutrition_energy')} value={t('nutrition_kcal', { kcal: kcal(n) })} />
@@ -63,7 +73,7 @@ export default function Profile({ id, scanId }: { id: string; scanId?: string })
                 <StatTile icon="leaf" tint={c.carbs} label={t('nutrition_carbohydrate')} value={n.carbohydrate != null ? t('nutrition_grams', { grams: grams(n.carbohydrate) }) : '–'} />
               </View>
               <Composition f={f} />
-            </>
+            </Reveal>
           )}
 
           {(f.field_marks.length > 0 || f.meristics) && (
@@ -116,7 +126,7 @@ export default function Profile({ id, scanId }: { id: string; scanId?: string })
             )}
           </View>
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
 
       <View style={{ position: 'absolute', top: insets.top + 8, left: 16, right: 16, flexDirection: 'row', justifyContent: 'space-between' }}>
         <CircleBtn icon="back" onPhoto label={t('action_back')} onPress={pop} />
@@ -136,7 +146,10 @@ function PriceCard({ f }: { f: Fish }) {
       <View style={{ flex: 1 }}>
         <Txt v="label" muted>{t('price_title')}</Txt>
         {f.price_inr_per_kg != null ? (
-          <Txt v="hero" style={{ fontSize: 40, lineHeight: 46 }}>{rupees(f.price_inr_per_kg)}<Txt v="title" muted>{'  ' + t('price_unit_per_kg')}</Txt></Txt>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap' }}>
+            <CountUp value={f.price_inr_per_kg} format={rupees} v="hero" style={{ fontSize: 40, lineHeight: 46 }} />
+            <Txt v="title" muted>{'  ' + t('price_unit_per_kg')}</Txt>
+          </View>
         ) : (
           <Txt v="title">{t('price_unavailable')}</Txt>
         )}
@@ -159,11 +172,18 @@ function Composition({ f }: { f: Fish }) {
     [t('nutrition_moisture'), n.moisture, c.moisture],
   ] as const).filter((p): p is [string, number, string] => p[1] != null); // not every study reports ash / carbohydrate
   const total = parts.reduce((a, p) => a + p[1], 0) || 1;
+  // The bar fills from the left once the card has settled.
+  const grow = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(grow, { toValue: 1, duration: 900, delay: 450, easing: easeOut, useNativeDriver: true }).start();
+  }, [grow]);
   return (
     <Card style={{ marginTop: 10 }}>
       <Txt v="title">{t('nutrition_protein_highlight', { grams: grams(n.protein) })}</Txt>
-      <View style={{ flexDirection: 'row', height: 14, borderRadius: 7, overflow: 'hidden', marginTop: 12, gap: 2 }}>
-        {parts.map(([label, v, color]) => <View key={label} style={{ flex: v / total, backgroundColor: color }} />)}
+      <View style={{ height: 14, borderRadius: 7, overflow: 'hidden', marginTop: 12, backgroundColor: c.surfaceAlt }}>
+        <Animated.View style={{ flex: 1, flexDirection: 'row', gap: 2, transformOrigin: 'left', transform: [{ scaleX: grow }] }}>
+          {parts.map(([label, v, color]) => <View key={label} style={{ flex: v / total, backgroundColor: color }} />)}
+        </Animated.View>
       </View>
       <View style={{ marginTop: 12, gap: 6 }}>
         {parts.map(([label, v, color]) => (
@@ -232,12 +252,16 @@ function Habitat({ f }: { f: Fish }) {
 function Section({ icon, title, children, initiallyOpen }: { icon: IconName; title: string; children: React.ReactNode; initiallyOpen?: boolean }) {
   const { c } = useApp();
   const [open, setOpen] = useState(!!initiallyOpen);
+  const turn = useRef(new Animated.Value(open ? 1 : 0)).current;
+  useEffect(() => {
+    Animated.spring(turn, { toValue: open ? 1 : 0, speed: 16, bounciness: 8, useNativeDriver: true }).start();
+  }, [turn, open]);
   return (
     <Card style={{ marginTop: 14, paddingVertical: 6 }}>
       <Tap onPress={() => { LayoutAnimation.easeInEaseOut(); setOpen(!open); }} accessibilityRole="button" accessibilityState={{ expanded: open }} scale={0.99} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 }}>
         <Icon name={icon} size={22} color={c.ink} />
         <Txt v="title" style={{ flex: 1 }}>{title}</Txt>
-        <View style={{ transform: [{ rotate: open ? '180deg' : '0deg' }] }}><Icon name="chevronDown" size={22} color={c.muted} /></View>
+        <Animated.View style={{ transform: [{ rotate: turn.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '180deg'] }) }] }}><Icon name="chevronDown" size={22} color={c.muted} /></Animated.View>
       </Tap>
       {open && <View style={{ paddingBottom: 12 }}>{children}</View>}
     </Card>

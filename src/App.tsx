@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Appearance, AppState as RNAppState, BackHandler, Dimensions, Easing, StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
+import { Animated, Appearance, AppState as RNAppState, BackHandler, Dimensions, Easing, StatusBar, StyleSheet, useColorScheme, useWindowDimensions, View } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FishID, Fish, Lang, onScanResult, Scan, Versions } from './native';
 import { translator } from './i18n';
 import { palettes } from './theme';
 import { AppContext, AppState, Icon, IconName, Route, Tab, Tap, ThemePref, Txt, useApp } from './ui';
+import { Awake, Reveal, useLoop } from './motion';
 import Onboarding from './screens/Onboarding';
 import Home from './screens/Home';
 import Guide from './screens/Guide';
@@ -105,11 +106,15 @@ function Root() {
           <Onboarding onDone={() => state.setPref('onboarded', 'true')} />
         ) : (
           <>
-            <Tabs tab={tab} setTab={setTab} />
+            <Awake.Provider value={stack.length === 0}>
+              <Tabs tab={tab} setTab={setTab} />
+            </Awake.Provider>
             {stack.map((e, i) => (
-              <StackScreen key={e.key} top={i === stack.length - 1} modal={e.route.name === 'scanner'}>
-                {screenFor(e.route)}
-              </StackScreen>
+              <Awake.Provider key={e.key} value={i === stack.length - 1}>
+                <StackScreen top={i === stack.length - 1} modal={e.route.name === 'scanner'}>
+                  {screenFor(e.route)}
+                </StackScreen>
+              </Awake.Provider>
             ))}
           </>
         )}
@@ -154,17 +159,30 @@ function StackScreen({ children, top, modal }: { children: React.ReactNode; top:
 function Tabs({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
   const { c, t, push } = useApp();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const items: [Tab, IconName, string][] = [
     ['home', 'home', t('nav_home')],
     ['guide', 'book', t('nav_fish')],
     ['history', 'history', t('nav_history')],
   ];
+  // A soft pill glides under the selected icon; item width matches the bar's padding below.
+  const itemW = (width - 8 - 92) / items.length;
+  const index = items.findIndex(([key]) => key === tab);
+  const slide = useRef(new Animated.Value(index)).current;
+  useEffect(() => {
+    Animated.spring(slide, { toValue: index, speed: 18, bounciness: 7, useNativeDriver: true }).start();
+  }, [slide, index]);
+  const halo = useLoop(2200, false);
   return (
     <View style={{ flex: 1 }}>
-      <View style={{ flex: 1 }}>
+      <Reveal key={tab} from={10} style={{ flex: 1 }}>
         {tab === 'home' ? <Home /> : tab === 'guide' ? <Guide /> : <History />}
-      </View>
+      </Reveal>
       <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: c.surface, paddingBottom: insets.bottom, paddingLeft: 8, paddingRight: 92, borderTopLeftRadius: 28, borderTopRightRadius: 28, boxShadow: c.shadow }}>
+        <Animated.View
+          pointerEvents="none"
+          style={{ position: 'absolute', top: 6, left: 8 + (itemW - 60) / 2, width: 60, height: 32, borderRadius: 16, backgroundColor: c.surfaceAlt, transform: [{ translateX: slide.interpolate({ inputRange: [0, 1], outputRange: [0, itemW] }) }] }}
+        />
         {items.map(([key, icon, label]) => {
           const on = tab === key;
           return (
@@ -175,7 +193,15 @@ function Tabs({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
           );
         })}
       </View>
-      {/* The scan button floats over the bar's right end, like Cal AI's "+". */}
+      {/* The scan button floats over the bar's right end, like Cal AI's "+", with a slow ripple inviting a tap. */}
+      <Animated.View
+        pointerEvents="none"
+        style={{
+          position: 'absolute', right: 18, bottom: insets.bottom + 14, width: 68, height: 68, borderRadius: 34, backgroundColor: c.primary,
+          opacity: halo.interpolate({ inputRange: [0, 1], outputRange: [0.28, 0] }),
+          transform: [{ scale: halo.interpolate({ inputRange: [0, 1], outputRange: [1, 1.55] }) }],
+        }}
+      />
       <Tap
         onPress={() => push({ name: 'scanner' })}
         accessibilityRole="button"
