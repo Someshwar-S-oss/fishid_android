@@ -9,6 +9,7 @@ import type { Fish, Lang, Scan, Versions } from './native';
 import type { T } from './i18n';
 import { Colors, font, iucnColors, scientificFont } from './theme';
 import { codeLabel } from './i18n';
+import { markPaths, markViewBox } from './fishMark';
 
 // ---------- App state & navigation ----------
 
@@ -170,7 +171,8 @@ export function Btn({ label, onPress, icon, kind = 'primary', disabled, loading,
         style,
       ]}>
       {loading ? <ActivityIndicator color={fg} /> : icon ? <Icon name={icon} size={20} color={fg} /> : null}
-      <Txt v={small ? 'label' : 'title'} color={fg} style={{ fontWeight: '600', textAlign: 'center', flexShrink: 1 }}>{label}</Txt>
+      {/* Tamil labels run ~1.5x wider: up to two lines, shrinking a little before wrapping. */}
+      <Txt v={small ? 'label' : 'title'} color={fg} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8} style={{ fontWeight: '600', textAlign: 'center', flexShrink: 1 }}>{label}</Txt>
     </Tap>
   );
 }
@@ -218,31 +220,44 @@ export function IucnBadge({ code }: { code: string }) {
   return <Chip label={`${code.toUpperCase()} · ${codeLabel(t, 'iucn', code)}`} bg={colors[0]} fg={colors[1]} style={code === 'ne' ? { borderWidth: 1, borderColor: c.line } : undefined} />;
 }
 
-/** Nutrient-style tile: tinted icon square, label, big value (Cal AI's Calories / Carbs tiles). */
+/**
+ * Nutrient-style tile: tinted icon square, label, big value (Cal AI's Calories / Carbs tiles).
+ * Stacked, not side by side, so the words get the tile's full width: long Tamil words ("கார்போஹைட்ரேட்") must never break mid-word.
+ */
 export function StatTile({ icon, tint, label, value, style }: { icon: IconName; tint: string; label: string; value: string; style?: StyleProp<ViewStyle> }) {
   const { c } = useApp();
   return (
-    <View style={[{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: c.surface, borderRadius: 20, padding: 14, boxShadow: c.shadow }, style]}>
-      <View style={{ width: 42, height: 42, borderRadius: 14, backgroundColor: tint + '22', alignItems: 'center', justifyContent: 'center' }}>
-        <Icon name={icon} size={22} color={tint} />
+    <View style={[{ flex: 1, gap: 8, backgroundColor: c.surface, borderRadius: 20, padding: 14, boxShadow: c.shadow }, style]}>
+      <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: tint + '22', alignItems: 'center', justifyContent: 'center' }}>
+        <Icon name={icon} size={20} color={tint} />
       </View>
-      <View style={{ flexShrink: 1 }}>
-        <Txt v="caption" muted numberOfLines={2}>{label}</Txt>
-        <Txt v="title" style={{ fontWeight: '700' }}>{value}</Txt>
+      <View>
+        <Txt v="caption" muted numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{label}</Txt>
+        <Txt v="title" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={{ fontWeight: '700' }}>{value}</Txt>
       </View>
     </View>
   );
 }
 
-/** The app icon's mark (res/drawable/ic_launcher_*): marigold scan corners around a white fish on brand teal. */
+/** Space to leave under a scrolling page's content so the floating scan button never covers its end. */
+export const FAB_CLEARANCE = 104;
+
+/** The app icon (tools/logo.py): a white angelfish with its bars cut through, on brand teal. Same art as the launcher icon. */
 export function Logo({ size = 40 }: { size?: number }) {
+  const teal = '#0E6E7E';
   return (
-    <View style={{ width: size, height: size, borderRadius: size * 0.3, backgroundColor: '#0E6E7E', alignItems: 'center', justifyContent: 'center' }}>
-      <Svg width={size * 0.78} height={size * 0.78} viewBox="2 2 20 20">
-        <Path d="M4,8V5a1,1 0 0 1 1,-1h3M16,4h3a1,1 0 0 1 1,1v3M20,16v3a1,1 0 0 1 -1,1h-3M8,20H5a1,1 0 0 1 -1,-1v-3" stroke="#F2A541" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" fill="none" />
-        <Path d="M6,12c1.6,-2.4 3.6,-3.6 6,-3.6 1.8,0 3,1.2 3.9,2.4L18,9.5v5l-2.1,-1.3c-0.9,1.2 -2.1,2.4 -3.9,2.4 -2.4,0 -4.4,-1.2 -6,-3.6z" stroke="#FFFFFF" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" fill="none" />
-      </Svg>
+    <View style={{ width: size, height: size, borderRadius: size * 0.3, backgroundColor: teal, overflow: 'hidden' }}>
+      <Mark size={size} color="#FFFFFF" cut={teal} />
     </View>
+  );
+}
+
+/** The angelfish alone, in [color], with its bars cut through in [cut]: pass the colour of whatever is behind it. */
+export function Mark({ size, color, cut }: { size: number; color: string; cut: string }) {
+  return (
+    <Svg width={size} height={size} viewBox={markViewBox}>
+      {markPaths.map(([body, d], i) => <Path key={i} d={d} fill={body ? color : cut} />)}
+    </Svg>
   );
 }
 

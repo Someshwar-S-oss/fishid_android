@@ -3,7 +3,7 @@ import { Animated, Dimensions, LayoutAnimation, ScrollView, Share, StatusBar, Vi
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fileUri, Fish } from '../native';
 import { codeLabel, grams, kcal, rupees } from '../i18n';
-import { Card, Chip, CircleBtn, FishImage, Icon, IconName, IucnBadge, Scientific, StatTile, Tap, Txt, useApp } from '../ui';
+import { Card, Chip, CircleBtn, FAB_CLEARANCE, FishImage, Icon, IconName, IucnBadge, Scientific, StatTile, Tap, Txt, useApp } from '../ui';
 import { CountUp, easeOut, Reveal } from '../motion';
 
 // S4: shopper order — price and food value first, then how to recognise it, then ecology and names.
@@ -24,7 +24,7 @@ export default function Profile({ id, scanId }: { id: string; scanId?: string })
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       <StatusBar barStyle="light-content" />
       <Animated.ScrollView
-        contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + FAB_CLEARANCE }}
         scrollEventThrottle={16}
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}>
         {/* Parallax: the photo scrolls at half speed and dims a little as the sheet slides over it. */}

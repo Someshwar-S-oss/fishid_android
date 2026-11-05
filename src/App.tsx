@@ -6,6 +6,7 @@ import { translator } from './i18n';
 import { palettes } from './theme';
 import { AppContext, AppState, Icon, IconName, Route, Tab, Tap, ThemePref, Txt, useApp } from './ui';
 import { Awake, Reveal, useLoop } from './motion';
+import { CoachProvider, useTipTarget } from './coach';
 import Onboarding from './screens/Onboarding';
 import Home from './screens/Home';
 import Guide from './screens/Guide';
@@ -101,6 +102,7 @@ function Root() {
   return (
     <AppContext.Provider value={state}>
       <StatusBar barStyle={dark ? 'light-content' : 'dark-content'} />
+      <CoachProvider>
       <View style={{ flex: 1, backgroundColor: c.bg }}>
         {prefs?.onboarded !== 'true' ? (
           <Onboarding onDone={() => state.setPref('onboarded', 'true')} />
@@ -111,14 +113,17 @@ function Root() {
             </Awake.Provider>
             {stack.map((e, i) => (
               <Awake.Provider key={e.key} value={i === stack.length - 1}>
-                <StackScreen top={i === stack.length - 1} modal={e.route.name === 'scanner'}>
+                <StackScreen top={i === stack.length - 1} modal={e.route.name === 'scanner'} sheet={e.route.name === 'result'}>
                   {screenFor(e.route)}
                 </StackScreen>
               </Awake.Provider>
             ))}
+            {/* One scan button over every page, except the camera itself and the result screens, which have their own "scan again". */}
+            {!['scanner', 'result', 'compare', 'nomatch'].includes(stack[stack.length - 1]?.route.name ?? '') && <ScanFab />}
           </>
         )}
       </View>
+      </CoachProvider>
     </AppContext.Provider>
   );
 }
@@ -136,15 +141,20 @@ function screenFor(r: Route) {
   }
 }
 
-/** Slides in from the right (or up, for the camera) when pushed. Screens below stay mounted, so going back keeps their state. */
-function StackScreen({ children, top, modal }: { children: React.ReactNode; top: boolean; modal?: boolean }) {
+/**
+ * Slides in from the right (or up, for the camera) when pushed. A result only fades in: its own sheet slides up over the photo.
+ * Screens below stay mounted, so going back keeps their state.
+ */
+function StackScreen({ children, top, modal, sheet }: { children: React.ReactNode; top: boolean; modal?: boolean; sheet?: boolean }) {
   const { c } = useApp();
   const p = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.timing(p, { toValue: 1, duration: 280, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
   }, [p]);
   const { width, height } = Dimensions.get('window');
-  const transform = modal
+  const transform = sheet
+    ? []
+    : modal
     ? [{ translateY: p.interpolate({ inputRange: [0, 1], outputRange: [height * 0.25, 0] }) }]
     : [{ translateX: p.interpolate({ inputRange: [0, 1], outputRange: [width * 0.3, 0] }) }];
   return (
@@ -157,7 +167,7 @@ function StackScreen({ children, top, modal }: { children: React.ReactNode; top:
 }
 
 function Tabs({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
-  const { c, t, push } = useApp();
+  const { c, t } = useApp();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const items: [Tab, IconName, string][] = [
@@ -172,7 +182,6 @@ function Tabs({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
   useEffect(() => {
     Animated.spring(slide, { toValue: index, speed: 18, bounciness: 7, useNativeDriver: true }).start();
   }, [slide, index]);
-  const halo = useLoop(2200, false);
   return (
     <View style={{ flex: 1 }}>
       <Reveal key={tab} from={10} style={{ flex: 1 }}>
@@ -193,7 +202,19 @@ function Tabs({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
           );
         })}
       </View>
-      {/* The scan button floats over the bar's right end, like Cal AI's "+", with a slow ripple inviting a tap. */}
+    </View>
+  );
+}
+
+/** The scan button floats bottom-right (over the tab bar's right end, like Cal AI's "+"), with a slow ripple inviting a tap. */
+function ScanFab() {
+  const { c, t, push } = useApp();
+  const insets = useSafeAreaInsets();
+  const halo = useLoop(2200, false);
+  const target = useTipTarget('scan');
+  return (
+    <>
+      <View ref={target} collapsable={false} pointerEvents="none" style={{ position: 'absolute', right: 18, bottom: insets.bottom + 14, width: 68, height: 68 }} />
       <Animated.View
         pointerEvents="none"
         style={{
@@ -210,6 +231,6 @@ function Tabs({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
         style={{ position: 'absolute', right: 18, bottom: insets.bottom + 14, width: 68, height: 68, borderRadius: 34, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center', boxShadow: '0px 10px 24px rgba(0,0,0,0.28)' }}>
         <Icon name="scan" size={30} color={c.onPrimary} />
       </Tap>
-    </View>
+    </>
   );
 }

@@ -1,144 +1,97 @@
-import React, { useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Fish, FishID, fileUri, Scan } from '../native';
+import { fileUri, Scan } from '../native';
 import { formatTime, grams, percent, rupees } from '../i18n';
 import { Card, CircleBtn, FishImage, Icon, IconName, LanguageSwitch, Logo, routeForScan, SectionTitle, Tap, Txt, useApp } from '../ui';
-import { Bubbles, FishArt, Float, Reveal, stagger, Waves } from '../motion';
+import { Awake, Reveal, stagger } from '../motion';
+import { useTips, useTipTarget } from '../coach';
+import { FishCard, SearchField, Sort, SortChips, useFishSearch } from './Guide';
 
-const BRAND = '#0E6E7E';
-const PRICE_ROWS = 5;
+/** Fish shown on Home before "See all" sends you to the full guide. */
+const GRID = 6;
+const RECENT = 8;
 
-// For shoppers at the market: identify the fish in front of you, check the going price, look a fish up by name.
+// Search-first: for shoppers asking "what fish is this, and what should it cost?". Scanning is the floating button.
 export default function Home() {
-  const { c, t, fish, history, push, home } = useApp();
+  const { c, t, history, push, home } = useApp();
   const insets = useSafeAreaInsets();
-  const [picking, setPicking] = useState(false);
+  const [query, setQuery] = useState('');
+  const [sort, setSort] = useState<Sort>('name');
+  const list = useFishSearch(query, sort);
+  const searching = !!query.trim();
+  const shown = searching ? list : list.slice(0, GRID);
 
-  const pick = async () => {
-    setPicking(true);
-    await FishID.pickPhoto().catch(() => false);
-    setPicking(false);
-  };
+  // First-run tips, once the page has faded in and only while it's the visible screen.
+  const awake = useContext(Awake);
+  const tips = useTips();
+  const searchTip = useTipTarget('search');
+  const languageTip = useTipTarget('language');
+  useEffect(() => {
+    if (!awake) return;
+    const id = setTimeout(() => tips(['search', 'language', 'scan']), 900);
+    return () => clearTimeout(id);
+  }, [awake, tips]);
 
-  // Priced fish first (cheapest first), then the rest by name.
-  const priced = [...fish].sort((a, b) =>
-    (a.price_inr_per_kg ?? Infinity) - (b.price_inr_per_kg ?? Infinity) || a.primary_name.localeCompare(b.primary_name));
   const seeAll = (onPress: () => void) => (
     <Tap onPress={onPress} style={{ padding: 6 }}><Txt v="label" color={c.accent} style={{ fontWeight: '700' }}>{t('home_see_all')}</Txt></Tap>
   );
 
   return (
-    <ScrollView contentContainerStyle={{ paddingTop: insets.top + 12, paddingHorizontal: 20, paddingBottom: 120 }}>
+    <ScrollView contentContainerStyle={{ paddingTop: insets.top + 12, paddingHorizontal: 20, paddingBottom: 140 }} keyboardShouldPersistTaps="handled">
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
         <Logo size={40} />
         <Txt v="headline" style={{ flex: 1 }}>{t('app_name')}</Txt>
-        <LanguageSwitch />
+        <View ref={languageTip} collapsable={false}><LanguageSwitch /></View>
         <CircleBtn icon="settings" label={t('action_settings')} onPress={() => push({ name: 'settings' })} />
       </View>
 
-      {/* Identify: the one thing most people open the app for. Water drifts along the bottom, a fish floats in the corner. */}
       <Reveal delay={40}>
-      <View style={{ marginTop: 20, borderRadius: 28, padding: 22, paddingBottom: 26, backgroundColor: BRAND, overflow: 'hidden', backgroundImage: 'linear-gradient(160deg, #13889A, #0E6E7E 55%, #0A5663)' }}>
-        <View style={{ position: 'absolute', right: -60, top: -60, width: 200, height: 200, borderRadius: 100, backgroundColor: '#FFFFFF', opacity: 0.06 }} pointerEvents="none" />
-        <Bubbles height={170} />
-        <Waves height={64} />
-        <Float style={{ position: 'absolute', right: -18, top: 14, opacity: 0.16 }} range={5} tilt={4} duration={2600}>
-          <FishArt width={130} body="#FFFFFF" band="#FFFFFF" eye="#0E6E7E" />
-        </Float>
-        <Txt v="display" color="#FFFFFF" style={{ maxWidth: '85%' }}>{t('home_scan_cta_title')}</Txt>
-        <Txt color="#FFFFFF" style={{ opacity: 0.85, marginTop: 4, maxWidth: '92%' }}>{t('home_scan_cta_body')}</Txt>
-        <View style={{ flexDirection: 'row', gap: 10, marginTop: 20 }}>
-          <Tap onPress={() => push({ name: 'scanner' })} accessibilityRole="button" style={{ flex: 1, minHeight: 56, borderRadius: 999, backgroundColor: '#FFFFFF', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-            <Icon name="camera" size={22} color={BRAND} stroke={2.2} />
-            <Txt v="title" color={BRAND} style={{ fontWeight: '700' }}>{t('nav_scan')}</Txt>
-          </Tap>
-          <Tap onPress={pick} disabled={picking} accessibilityRole="button" accessibilityLabel={t('scan_gallery_description')}
-            style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center', opacity: picking ? 0.5 : 1 }}>
-            <Icon name="gallery" size={24} color="#FFFFFF" />
-          </Tap>
-        </View>
-      </View>
+        <Txt v="display" style={{ marginTop: 28 }} accessibilityRole="header">{t('home_search_title')}</Txt>
+        <View ref={searchTip} collapsable={false} style={{ marginTop: 12 }}><SearchField query={query} setQuery={setQuery} /></View>
       </Reveal>
 
-      {/* Look up a fish by name, in any script. */}
-      <Reveal delay={110}>
-      <Tap onPress={() => home('guide')} accessibilityRole="search" scale={0.99}
-        style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 14, minHeight: 56, borderRadius: 999, paddingHorizontal: 20, backgroundColor: c.surface, boxShadow: c.shadow }}>
-        <Icon name="search" size={20} color={c.muted} />
-        <Txt muted style={{ flex: 1 }} numberOfLines={1}>{t('catalogue_search_hint')}</Txt>
-      </Tap>
-      </Reveal>
-
-      <SectionTitle right={fish.length > PRICE_ROWS ? seeAll(() => home('guide')) : undefined}>{t('home_market_prices')}</SectionTitle>
-      <Reveal delay={180}>
-        <Card style={{ paddingVertical: 4 }}>
-          {priced.slice(0, PRICE_ROWS).map((f, i) => (
-            <Reveal key={f.id} delay={260 + stagger(i, 60)} from={10}>
-              <PriceRow f={f} last={i === Math.min(PRICE_ROWS, priced.length) - 1} />
-            </Reveal>
-          ))}
-        </Card>
-      </Reveal>
-      <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginTop: 10, paddingHorizontal: 4 }}>
-        <Icon name="info" size={16} color={c.muted} />
-        <Txt v="caption" muted style={{ flex: 1 }}>{t('price_note')}</Txt>
-      </View>
-
-      {history.length > 0 ? (
-        <>
-          <SectionTitle right={history.length > 2 ? seeAll(() => home('history')) : undefined}>{t('home_recent')}</SectionTitle>
-          <View style={{ gap: 12 }}>
-            {history.slice(0, 2).map((s, i) => <Reveal key={s.id} delay={400 + i * 70}><ScanRow scan={s} /></Reveal>)}
-          </View>
-        </>
-      ) : (
-        <>
-          <SectionTitle>{t('home_how_it_works')}</SectionTitle>
-          <Reveal delay={400}>
-          <Card style={{ gap: 18 }}>
-            {([
-              ['scan', c.marigold, 'onboarding_scan_title', 'onboarding_scan_body'],
-              ['sparkle', c.accent, 'onboarding_identify_title', 'onboarding_identify_body'],
-              ['price', c.success, 'onboarding_learn_title', 'onboarding_learn_body'],
-            ] as const).map(([icon, tint, title, body]) => (
-              <View key={title} style={{ flexDirection: 'row', gap: 14 }}>
-                <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: tint + '22', alignItems: 'center', justifyContent: 'center' }}>
-                  <Icon name={icon} size={22} color={tint} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Txt v="title">{t(title)}</Txt>
-                  <Txt muted>{t(body)}</Txt>
-                </View>
-              </View>
-            ))}
-          </Card>
-          </Reveal>
-        </>
+      {!searching && history.length > 0 && (
+        <Reveal delay={100}>
+          <SectionTitle right={seeAll(() => home('history'))}>{t('home_recent')}</SectionTitle>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20 }} contentContainerStyle={{ gap: 10, paddingHorizontal: 20 }}>
+            {history.slice(0, RECENT).map(s => <ScanThumb key={s.id} scan={s} />)}
+          </ScrollView>
+        </Reveal>
       )}
+
+      <Reveal delay={160}>
+        {/* Heading and chips on their own lines in every language, so switching language never reflows them. */}
+        <Txt v="headline" style={{ marginTop: 28 }} accessibilityRole="header">{t('home_market_prices')}</Txt>
+        <SortChips options={['name', 'low']} sort={sort} setSort={setSort} style={{ marginTop: 10, marginBottom: 14 }} />
+        {shown.length === 0 ? (
+          <Txt muted style={{ textAlign: 'center', marginTop: 24 }}>{t('catalogue_no_results', { query })}</Txt>
+        ) : (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 14, rowGap: 18 }}>
+            {shown.map((f, i) => (
+              <Reveal key={f.id} delay={200 + stagger(i, 45)} style={{ width: '47.5%', flexGrow: 1, maxWidth: '50%' }}><FishCard f={f} /></Reveal>
+            ))}
+          </View>
+        )}
+        {!searching && list.length > GRID && <View style={{ alignItems: 'center', marginTop: 8 }}>{seeAll(() => home('guide'))}</View>}
+        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginTop: 16, paddingHorizontal: 4 }}>
+          <Icon name="info" size={16} color={c.muted} />
+          <Txt v="caption" muted style={{ flex: 1 }}>{t('price_note')}</Txt>
+        </View>
+      </Reveal>
     </ScrollView>
   );
 }
 
-/** Photo, both names, and the price per kg, big enough to compare with the seller's board. */
-function PriceRow({ f, last }: { f: Fish; last: boolean }) {
-  const { c, t, push } = useApp();
+/** A past scan as a small photo tile with the fish's name (or a warning dot when nothing was identified). */
+function ScanThumb({ scan }: { scan: Scan }) {
+  const { c, t, fishById, push } = useApp();
+  const f = scan.species_id ? fishById[scan.species_id] : undefined;
+  const name = f ? f.primary_name : t('history_not_identified');
   return (
-    <Tap onPress={() => push({ name: 'profile', id: f.id })} scale={0.99} accessibilityRole="button"
-      style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 12, borderBottomWidth: last ? 0 : 1, borderBottomColor: c.line }}>
-      <FishImage uri={f.image_uris[0]} style={{ width: 56, height: 56 }} radius={16} />
-      <View style={{ flex: 1 }}>
-        <Txt v="title" numberOfLines={2}>{f.primary_name}</Txt>
-        {f.secondary_name ? <Txt v="caption" muted numberOfLines={1}>{f.secondary_name}</Txt> : null}
-        {f.price_inr_per_kg == null && <Txt v="caption" muted>{t('price_unavailable')}</Txt>}
-      </View>
-      {f.price_inr_per_kg != null && (
-        <View style={{ alignItems: 'flex-end' }}>
-          <Txt v="title" style={{ fontWeight: '700' }}>{rupees(f.price_inr_per_kg)}</Txt>
-          <Txt v="caption" muted>{t('price_unit_per_kg')}</Txt>
-        </View>
-      )}
-      <Icon name="chevronRight" size={18} color={c.muted} />
+    <Tap onPress={() => push(routeForScan(scan))} accessibilityRole="button" accessibilityLabel={name} style={{ width: 84 }}>
+      <FishImage uri={fileUri(scan.photo)} style={{ width: 84, height: 84 }} radius={20} />
+      <Txt v="caption" muted={!f} numberOfLines={1} style={{ marginTop: 4, fontWeight: f ? '600' : '400', color: f ? c.ink : c.warn }}>{name}</Txt>
     </Tap>
   );
 }

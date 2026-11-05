@@ -1,22 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, LayoutAnimation, PermissionsAndroid, View } from 'react-native';
+import { Animated, Easing, PermissionsAndroid, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Btn, Card, Icon, IconName, Tap, Txt, useApp } from '../ui';
-import { Bubbles, Pop, useLoop } from '../motion';
+import { Btn, Icon, Logo, Tap, Txt, useApp } from '../ui';
+import { Pop } from '../motion';
+import { font } from '../theme';
 
-// S1: language → Scan / Identify / Learn → camera permission (explained before the system dialog).
+// Two screens, then learn by doing (the first-run tips on Home take over):
+// 1. welcome + language, 2. camera permission, explained before the system dialog.
 export default function Onboarding({ onDone }: { onDone: () => void }) {
-  const { c, t, lang, setLang } = useApp();
+  const { c, t } = useApp();
   const insets = useSafeAreaInsets();
-  const [step, setStepNow] = useState(0);
-  // The progress dots stretch and shrink into place instead of jumping.
-  const setStep = (s: number) => { LayoutAnimation.configureNext(LayoutAnimation.create(260, 'easeInEaseOut', 'opacity')); setStepNow(s); };
-  const slides: [IconName, string, string, string][] = [
-    ['scan', t('onboarding_scan_title'), t('onboarding_scan_body'), c.marigold],
-    ['sparkle', t('onboarding_identify_title'), t('onboarding_identify_body'), c.accent],
-    ['book', t('onboarding_learn_title'), t('onboarding_learn_body'), c.protein],
-  ];
-  const last = slides.length + 1; // language, 3 slides, camera
+  const [step, setStep] = useState(0);
 
   const fade = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -24,99 +18,66 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
     Animated.timing(fade, { toValue: 1, duration: 320, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
   }, [fade, step]);
 
-  const next = () => (step < last ? setStep(step + 1) : onDone());
   const askCamera = async () => {
     await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.CAMERA).catch(() => {});
     onDone();
   };
 
-  let body: React.ReactNode;
-  if (step === 0) {
-    body = (
-      <>
-        <Art key={step} icon="globe" tint={c.accent} />
-        <Txt v="display" style={{ textAlign: 'center' }}>{t('onboarding_language_title')}</Txt>
-        <View style={{ gap: 12, marginTop: 28, alignSelf: 'stretch' }}>
-          {(['en', 'ta'] as const).map(l => {
-            const on = lang === l;
-            return (
-              <Card key={l} onPress={() => setLang(l)} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 20, borderWidth: 2, borderColor: on ? c.ink : 'transparent' }}>
-                <Txt v="headline" style={{ flex: 1 }}>{l === 'en' ? t('language_english') : t('language_tamil')}</Txt>
-                <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: on ? c.primary : c.surfaceAlt, alignItems: 'center', justifyContent: 'center' }}>
-                  {on && <Icon name="check" size={18} color={c.onPrimary} stroke={3} />}
-                </View>
-              </Card>
-            );
-          })}
-        </View>
-        <Txt muted style={{ textAlign: 'center', marginTop: 16 }}>{t('onboarding_language_hint')}</Txt>
-      </>
-    );
-  } else if (step <= slides.length) {
-    const [icon, title, text, tint] = slides[step - 1];
-    body = (
-      <>
-        <Art key={step} icon={icon} tint={tint} />
-        <Txt v="hero" style={{ textAlign: 'center' }}>{title}</Txt>
-        <Txt v="title" muted style={{ textAlign: 'center', marginTop: 12, fontWeight: '400' }}>{text}</Txt>
-      </>
-    );
-  } else {
-    body = (
-      <>
-        <Art key={step} icon="camera" tint={c.success} />
-        <Txt v="display" style={{ textAlign: 'center' }}>{t('permission_camera_title')}</Txt>
-        <Txt v="title" muted style={{ textAlign: 'center', marginTop: 12, fontWeight: '400' }}>{t('permission_camera_body')}</Txt>
-      </>
-    );
-  }
-
   return (
     <View style={{ flex: 1, backgroundColor: c.bg, paddingTop: insets.top + 12, paddingBottom: insets.bottom + 16, paddingHorizontal: 24 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', height: 44 }}>
-        <View style={{ flex: 1, flexDirection: 'row', gap: 6 }}>
-          {Array.from({ length: last + 1 }, (_, i) => (
-            <View key={i} style={{ height: 6, borderRadius: 3, width: i === step ? 26 : 6, backgroundColor: i <= step ? c.ink : c.line }} />
-          ))}
-        </View>
-        {step > 0 && step < last && (
-          <Tap onPress={() => setStep(last)} accessibilityRole="button" style={{ padding: 10 }}>
-            <Txt v="label" muted>{t('onboarding_skip')}</Txt>
-          </Tap>
-        )}
+      <View style={{ flexDirection: 'row', gap: 6, height: 44, alignItems: 'center' }}>
+        {[0, 1].map(i => <View key={i} style={{ height: 6, borderRadius: 3, width: i === step ? 26 : 6, backgroundColor: i <= step ? c.ink : c.line }} />)}
       </View>
-      <Animated.View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', opacity: fade, transform: [{ translateY: fade.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) }] }}>
-        {body}
+
+      <Animated.View key={step} style={{ flex: 1, justifyContent: 'center', opacity: fade, transform: [{ translateY: fade.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) }] }}>
+        {step === 0 ? <Welcome /> : (
+          <View style={{ alignItems: 'center' }}>
+            <Pop style={{ width: 132, height: 132, borderRadius: 66, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center', marginBottom: 32 }}>
+              <Icon name="camera" size={56} color={c.accent} />
+            </Pop>
+            <Txt v="display" style={{ textAlign: 'center' }}>{t('permission_camera_title')}</Txt>
+            <Txt v="title" muted style={{ textAlign: 'center', marginTop: 12, fontWeight: '400' }}>{t('permission_camera_body')}</Txt>
+          </View>
+        )}
       </Animated.View>
-      {step === last ? (
+
+      {step === 0 ? (
+        <Btn label={t('onboarding_next')} onPress={() => setStep(1)} />
+      ) : (
         <View style={{ gap: 8 }}>
           <Btn label={t('permission_allow')} icon="camera" onPress={askCamera} />
           <Btn label={t('onboarding_start')} kind="ghost" onPress={onDone} />
         </View>
-      ) : (
-        <Btn label={t('onboarding_next')} onPress={next} />
       )}
     </View>
   );
 }
 
-/** Soft glowing disc with a big icon (Pillowtalk-style illustration): the icon springs in, two dots orbit, bubbles drift up. */
-function Art({ icon, tint }: { icon: IconName; tint: string }) {
-  const pulse = useLoop(1800);
-  const orbit = useLoop(9000, false);
-  const spin = (from: number) => ({ transform: [{ rotate: orbit.interpolate({ inputRange: [0, 1], outputRange: [`${from}deg`, `${from + 360}deg`] }) }] });
-  const dot = (size: number, color: string) => <View style={{ position: 'absolute', top: 0, left: 110 - size / 2, width: size, height: size, borderRadius: size, backgroundColor: color }} />;
+/** The angelfish, a one-line welcome, and the language choice: each language named in its own script. */
+function Welcome() {
+  const { c, t, lang, setLang } = useApp();
+  const option = (l: 'en' | 'ta', glyph: string, name: string) => {
+    const on = lang === l;
+    return (
+      <Tap key={l} onPress={() => setLang(l)} accessibilityRole="radio" accessibilityState={{ selected: on }} accessibilityLabel={name}
+        style={{ flex: 1, alignItems: 'center', gap: 6, paddingVertical: 18, borderRadius: 22, backgroundColor: c.surface, borderWidth: 2, borderColor: on ? c.ink : 'transparent', boxShadow: c.shadow }}>
+        <Text style={{ fontFamily: font, fontSize: 30, lineHeight: 40, fontWeight: '700', color: on ? c.ink : c.muted }}>{glyph}</Text>
+        <Txt v="label" style={{ fontWeight: on ? '700' : '500' }}>{name}</Txt>
+      </Tap>
+    );
+  };
   return (
-    <View style={{ width: 220, height: 220, alignItems: 'center', justifyContent: 'center', marginBottom: 36 }}>
-      <Animated.View style={{ position: 'absolute', width: 220, height: 220, borderRadius: 110, backgroundColor: tint + '1F', transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1.04] }) }] }} />
-      <Bubbles color={tint} height={200} spots={[0.18, 0.3, 0.72, 0.82]} />
-      <Animated.View style={[{ position: 'absolute', width: 220, height: 220 }, spin(0)]}>{dot(12, tint)}</Animated.View>
-      <Animated.View style={[{ position: 'absolute', width: 220, height: 220 }, spin(160)]}>{dot(8, tint + '99')}</Animated.View>
-      <Pop style={{ width: 150, height: 150, borderRadius: 75, backgroundColor: tint + '33', alignItems: 'center', justifyContent: 'center' }}>
-        <Pop delay={90} style={{ width: 96, height: 96, borderRadius: 48, backgroundColor: tint, alignItems: 'center', justifyContent: 'center', boxShadow: `0px 10px 28px ${tint}66` }}>
-          <Icon name={icon} size={48} color="#fff" stroke={2.2} />
-        </Pop>
-      </Pop>
+    <View style={{ alignItems: 'center' }}>
+      <Pop><Logo size={112} /></Pop>
+      <Txt v="display" style={{ textAlign: 'center', marginTop: 28 }} accessibilityRole="header">{t('onboarding_welcome_title')}</Txt>
+      <Txt muted style={{ textAlign: 'center', marginTop: 6 }}>{t('about_body')}</Txt>
+
+      <Txt v="title" style={{ marginTop: 40, alignSelf: 'stretch' }}>{t('onboarding_language_title')}</Txt>
+      <View style={{ flexDirection: 'row', gap: 12, marginTop: 12, alignSelf: 'stretch' }}>
+        {option('en', 'A', t('language_english'))}
+        {option('ta', 'அ', t('language_tamil'))}
+      </View>
+      <Txt v="caption" muted style={{ textAlign: 'center', marginTop: 12 }}>{t('onboarding_language_hint')}</Txt>
     </View>
   );
 }

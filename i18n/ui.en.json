@@ -23,6 +23,13 @@
   "onboarding_next": "Next",
   "onboarding_skip": "Skip",
   "onboarding_start": "Start scanning",
+  "onboarding_welcome_title": "Welcome to FishID",
+
+  "tip_search": "Search any fish by its Tamil or English name",
+  "tip_language": "Switch between English and Tamil any time",
+  "tip_scan": "Tap here to identify a fish with your camera",
+  "tip_frame": "Fit the whole fish sideways inside the frame",
+  "tip_continue": "Tap anywhere to continue",
 
   "permission_camera_title": "Camera access needed",
   "permission_camera_body": "FishID uses the camera only to identify fish. Your photos stay on your phone.",
@@ -42,14 +49,10 @@
   "scan_switched_to_tap": "Switched to tap mode for smoother scanning on this phone",
   "scan_camera_error": "The camera couldn't start. Close other camera apps and try again.",
 
-  "home_scan_cta_title": "Identify a fish",
-  "home_scan_cta_body": "Point your camera at a fish to see its name, price and nutrition.",
   "home_recent": "Recent scans",
   "home_market_prices": "Market prices",
-  "home_how_it_works": "How it works",
   "home_see_all": "See all",
-  "scanner_title": "Scanner",
-  "result_match_score": "Match score",
+  "home_search_title": "What fish is this?",
   "nutrition_energy": "Energy",
   "nutrition_kcal": "{kcal} kcal",
 
@@ -91,6 +94,8 @@
   "price_updated": "Updated {date}",
   "price_note": "Prices change with market and season.",
   "price_unavailable": "Price not available",
+  "price_scale_low": "Cheaper",
+  "price_scale_high": "Pricier",
 
   "nutrition_title": "Nutrition per 100 g",
   "nutrition_protein_highlight": "{grams} g of protein in every 100 g",
@@ -196,6 +201,7 @@
   "settings_downloading": "Downloading update…",
   "settings_privacy": "Privacy",
   "privacy_body": "Photos are processed on your phone and are not uploaded. Your scan history stays on this phone.",
+  "settings_show_tips": "Show tips again",
   "settings_about": "About FishID",
   "about_body": "FishID helps you identify commercially important fish and learn about them."
 }

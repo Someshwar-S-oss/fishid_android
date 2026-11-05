@@ -1,10 +1,10 @@
-import React, { useEffect, useRef } from 'react';
-import { Animated, Dimensions, Easing, ScrollView, StatusBar, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Easing, ScrollView, Share, StatusBar, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FishID, fileUri, Scan } from '../native';
-import { grams, kcal, percent, rupees } from '../i18n';
-import { Bar, Btn, Card, Chip, CircleBtn, FishImage, Icon, Scientific, StatTile, Tap, Txt, useApp } from '../ui';
-import { Burst, CountUp, Float, Pop, Reveal, Ring, stagger } from '../motion';
+import { percent, rupees } from '../i18n';
+import { Bar, Btn, Card, Chip, CircleBtn, FishImage, Icon, IconName, Scientific, Tap, Txt, useApp } from '../ui';
+import { CountUp, Pop, Reveal, stagger } from '../motion';
 
 const useScan = (scanId: string): Scan | undefined => useApp().history.find(s => s.id === scanId);
 
@@ -14,9 +14,12 @@ function useLeave() {
   return () => { FishID.scanAgain(); pop(); };
 }
 
-/** Matched: the user's photo on top, a sheet with name, numbers and match score (Cal AI's nutrition screen). */
+/**
+ * Matched: the user's photo, dimmed, with a white sheet sliding up over it. Match level as a small spaced label,
+ * the fish's name large, then the price per kg with a ruler showing where it sits among the guide's prices.
+ */
 export function Result({ scanId }: { scanId: string }) {
-  const { c, t, fishById, versions, push, home } = useApp();
+  const { c, t, lang, fish, fishById, versions, push, home } = useApp();
   const insets = useSafeAreaInsets();
   const leave = useLeave();
   const scan = useScan(scanId);
@@ -24,94 +27,113 @@ export function Result({ scanId }: { scanId: string }) {
 
   const rise = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.timing(rise, { toValue: 1, duration: 420, easing: Easing.out(Easing.back(1.1)), useNativeDriver: true }).start();
+    Animated.spring(rise, { toValue: 1, speed: 12, bounciness: 4, useNativeDriver: true }).start();
   }, [rise]);
 
   if (!scan || !f) return null;
   const conf = scan.candidates.find(x => x.species_id === f.id)?.confidence ?? 0;
   const high = conf >= f.threshold + (versions?.high_margin ?? 0.1);
-  const n = f.nutrition_g;
-  const photoH = Dimensions.get('window').height * 0.42;
+  const price = f.price_inr_per_kg;
+  const prices = fish.flatMap(x => (x.price_inr_per_kg != null ? [x.price_inr_per_kg] : []));
+  const low = Math.min(...prices);
+  const top = Math.max(...prices);
+  const place = price == null ? null : top > low ? (price - low) / (top - low) : 0.5;
+  const share = () => Share.share({ message: t('profile_share_text', { name: f.primary_name, scientific_name: f.scientific_name }) });
 
   return (
-    <View style={{ flex: 1, backgroundColor: c.bg }}>
+    <View style={{ flex: 1, backgroundColor: '#000' }}>
       <StatusBar barStyle="light-content" />
-      <ScrollView contentContainerStyle={{ paddingBottom: 190 }} bounces={false}>
-        <View style={{ height: photoH }}>
-          <FishImage uri={fileUri(scan.photo)} style={{ flex: 1 }} radius={0} />
-          {/* Floating labels on the photo, like Cal AI's "Pancakes 595". */}
-          {f.price_inr_per_kg != null && <Floating delay={450} style={{ right: 16, bottom: 56 }} title={t('price_unit_per_kg')} value={rupees(f.price_inr_per_kg)} />}
-          {n && <Floating delay={600} style={{ left: 16, bottom: 104 }} title={t('nutrition_protein')} value={`${grams(n.protein)} g`} />}
-        </View>
-
-        <Animated.View style={{ marginTop: -32, backgroundColor: c.bg, borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 20, opacity: rise, transform: [{ translateY: rise.interpolate({ inputRange: [0, 1], outputRange: [80, 0] }) }] }}>
-          <View style={{ alignSelf: 'flex-start' }}>
-            <Chip
-              icon="check"
-              label={t('result_match_percent', { label: t(high ? 'result_match_high' : 'result_match_likely'), percent: percent(conf) })}
-              bg={high ? c.successSoft : c.warnSoft}
-              fg={high ? c.success : c.warn}
-            />
-            {high && <View style={{ position: 'absolute', left: 19, top: '50%' }}><Burst color={c.success} /></View>}
-          </View>
-          <Txt v="display" style={{ marginTop: 10 }}>{f.primary_name}</Txt>
-          {f.secondary_name ? <Txt v="title" muted style={{ fontWeight: '500' }}>{f.secondary_name}</Txt> : null}
-          <Scientific>{f.scientific_name}</Scientific>
-
-          <Reveal delay={220} style={{ flexDirection: 'row', gap: 10, marginTop: 18 }}>
-            <StatTile icon="flame" tint={c.energy} label={t('nutrition_energy')} value={n ? t('nutrition_kcal', { kcal: kcal(n) }) : '–'} />
-            <StatTile icon="price" tint={c.accent} label={t('price_title')} value={f.price_inr_per_kg != null ? rupees(f.price_inr_per_kg) : '–'} />
-          </Reveal>
-          <Reveal delay={300} style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
-            <StatTile icon="bolt" tint={c.protein} label={t('nutrition_protein')} value={n ? t('nutrition_grams', { grams: grams(n.protein) }) : '–'} />
-            <StatTile icon="drop" tint={c.fat} label={t('nutrition_fat')} value={n ? t('nutrition_grams', { grams: grams(n.fat) }) : '–'} />
-          </Reveal>
-
-          {/* Match score as a ring that sweeps round while the number counts up. */}
-          <Reveal delay={380}>
-            <Card style={{ marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-              <Ring value={conf} color={high ? c.success : c.marigold} track={c.surfaceAlt} size={66} stroke={7}>
-                <CountUp value={percent(conf)} format={x => `${Math.round(x)}%`} v="label" style={{ fontWeight: '700' }} />
-              </Ring>
-              <View style={{ flex: 1 }}>
-                <Txt v="title">{t('result_match_score')}</Txt>
-                <Txt v="caption" muted>{t(high ? 'result_match_high' : 'result_match_likely')}</Txt>
-              </View>
-              <Icon name="sparkle" size={22} color={high ? c.success : c.marigold} />
-            </Card>
-          </Reveal>
-
-          <Tap onPress={() => push({ name: 'report', scanId })} style={{ alignSelf: 'center', flexDirection: 'row', gap: 6, alignItems: 'center', padding: 14, marginTop: 6 }}>
-            <Icon name="flag" size={16} color={c.muted} />
-            <Txt v="label" muted style={{ textDecorationLine: 'underline' }}>{t('profile_report_link')}</Txt>
-          </Tap>
-        </Animated.View>
-      </ScrollView>
+      <FishImage uri={fileUri(scan.photo)} style={StyleSheet.absoluteFill} radius={0} />
+      <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.38)' }]} />
 
       <View style={{ position: 'absolute', top: insets.top + 8, left: 16 }}>
         <CircleBtn icon="close" onPhoto label={t('action_done')} onPress={() => home()} />
       </View>
 
-      {/* Stacked full-width: Tamil labels run ~40% longer and must not break mid-word. */}
-      <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, gap: 8, padding: 16, paddingBottom: insets.bottom + 12, backgroundColor: c.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28, boxShadow: c.shadow }}>
-        <Btn label={t('result_view_details')} onPress={() => push({ name: 'profile', id: f.id, scanId })} />
-        <Btn label={t('result_scan_again')} kind="outline" icon="scan" onPress={leave} small />
-      </View>
+      <Animated.View
+        style={{
+          position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: c.surface,
+          borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingHorizontal: 24, paddingBottom: insets.bottom + 16,
+          transform: [{ translateY: rise.interpolate({ inputRange: [0, 1], outputRange: [500, 0] }) }],
+        }}>
+        <View style={{ alignSelf: 'center', width: 40, height: 5, borderRadius: 3, backgroundColor: c.line, marginTop: 10 }} />
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8, marginHorizontal: -8 }}>
+          <IconBtn icon="share" label={t('action_share')} onPress={share} />
+          <IconBtn icon="flag" label={t('profile_report_link')} onPress={() => push({ name: 'report', scanId })} />
+        </View>
+
+        <Reveal delay={150} style={{ alignItems: 'center' }}>
+          {/* Spaced capitals only in English: letter spacing pulls Tamil's joined letters apart. */}
+          <Txt v="label" color={high ? c.success : c.warn}
+            style={{ fontWeight: '700', textAlign: 'center', ...(lang === 'en' && { letterSpacing: 3, textTransform: 'uppercase' }) }}>
+            {t('result_match_percent', { label: t(high ? 'result_match_high' : 'result_match_likely'), percent: percent(conf) })}
+          </Txt>
+          <Txt v="hero" style={{ fontSize: 36, lineHeight: 44, textAlign: 'center', marginTop: 2 }} accessibilityRole="header">{f.primary_name}</Txt>
+        </Reveal>
+        <Reveal delay={230} style={{ alignItems: 'center', marginTop: 10 }}>
+          {f.secondary_name ? <Txt v="title" muted style={{ textAlign: 'center', fontWeight: '500' }}>{f.secondary_name}</Txt> : null}
+          <Scientific style={{ textAlign: 'center' }}>{f.scientific_name}</Scientific>
+        </Reveal>
+
+        <Reveal delay={320} style={{ alignItems: 'center', marginTop: 22 }}>
+          {price != null ? (
+            <>
+              <CountUp value={price} format={rupees} v="hero" style={{ fontSize: 52, lineHeight: 60 }} />
+              <Txt v="label" style={{ fontWeight: '700' }}>{t('price_unit_per_kg')}</Txt>
+            </>
+          ) : (
+            <Txt v="title" muted>{t('price_unavailable')}</Txt>
+          )}
+        </Reveal>
+        {place != null && prices.length > 1 && <PriceRuler place={place} />}
+        <Txt v="caption" muted style={{ textAlign: 'center', marginTop: 8 }}>{t('price_note')}</Txt>
+
+        {/* Side by side, as in the reference, at fixed 2:3 widths in every language; long Tamil labels shrink or wrap inside them. */}
+        <View style={{ flexDirection: 'row', gap: 12, marginTop: 22 }}>
+          <Btn label={t('result_scan_again')} kind="outline" onPress={leave} style={{ flex: 2, paddingHorizontal: 12 }} />
+          <Btn label={t('result_view_details')} onPress={() => push({ name: 'profile', id: f.id, scanId })} style={{ flex: 3, paddingHorizontal: 12 }} />
+        </View>
+      </Animated.View>
     </View>
   );
 }
 
-/** Label that lands on the photo with a spring, then hovers slightly. */
-function Floating({ title, value, style, delay }: { title: string; value: string; style: object; delay: number }) {
+/** Bare icon button for the sheet's top corners. */
+function IconBtn({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
+  const { c } = useApp();
   return (
-    <Pop delay={delay} style={[{ position: 'absolute' }, style]}>
-      <Float range={3} tilt={0} duration={2400 + delay}>
-        <View style={{ backgroundColor: '#fff', borderRadius: 18, paddingHorizontal: 16, paddingVertical: 8, alignItems: 'center', boxShadow: '0px 8px 24px rgba(0,0,0,0.18)' }}>
-          <Txt v="label" color="#111" style={{ fontWeight: '700' }}>{title}</Txt>
-          <Txt v="title" color="#111" style={{ fontWeight: '700' }}>{value}</Txt>
-        </View>
-      </Float>
-    </Pop>
+    <Tap onPress={onPress} accessibilityRole="button" accessibilityLabel={label} hitSlop={8} style={{ padding: 8 }}>
+      <Icon name={icon} size={24} color={c.ink} />
+    </Tap>
+  );
+}
+
+const TICKS = 29;
+
+/** Ticks from the guide's cheapest fish to its priciest; a dark marker slides to where this fish's price sits. */
+function PriceRuler({ place }: { place: number }) {
+  const { c, t } = useApp();
+  const [w, setW] = useState(0);
+  const p = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (w) Animated.timing(p, { toValue: place, duration: 900, delay: 350, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+  }, [p, place, w]);
+  return (
+    <View style={{ marginTop: 14 }} accessible accessibilityLabel={`${t('price_scale_low')} – ${t('price_scale_high')}`}>
+      <View onLayout={e => setW(e.nativeEvent.layout.width)} style={{ height: 36, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        {Array.from({ length: TICKS }, (_, i) => <View key={i} style={{ width: 1.5, height: 16, backgroundColor: c.muted, opacity: 0.45 }} />)}
+        {w > 0 && (
+          <Animated.View style={{
+            position: 'absolute', left: 0, width: 3, height: 36, borderRadius: 2, backgroundColor: c.ink,
+            transform: [{ translateX: p.interpolate({ inputRange: [0, 1], outputRange: [-0.75, w - 2.25] }) }],
+          }} />
+        )}
+      </View>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 }}>
+        <Txt v="caption" muted>{t('price_scale_low')}</Txt>
+        <Txt v="caption" muted>{t('price_scale_high')}</Txt>
+      </View>
+    </View>
   );
 }
 

@@ -14,6 +14,9 @@ react {
     autolinkLibrariesWithApp()
 }
 
+// `-PfishidDemo` builds install beside the Kotlin app for side-by-side demos: own package id and launcher name.
+val demo = providers.gradleProperty("fishidDemo").isPresent
+
 android {
     namespace = "com.example.fishid"
     compileSdk {
@@ -28,6 +31,8 @@ android {
         targetSdk = 37
         versionCode = 1
         versionName = "1.0"
+        if (demo) applicationIdSuffix = ".rn"
+        manifestPlaceholders["appLabel"] = if (demo) "FishID RN" else "@string/app_name"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

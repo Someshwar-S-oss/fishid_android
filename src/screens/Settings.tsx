@@ -1,16 +1,18 @@
 import React from 'react';
 import { ScrollView, View } from 'react-native';
 import { Key } from '../i18n';
-import { Card, Header, Icon, IconName, LanguageSwitch, Tap, ThemePref, Txt, useApp } from '../ui';
+import { Card, FAB_CLEARANCE, Header, Icon, IconName, LanguageSwitch, Tap, ThemePref, Txt, useApp } from '../ui';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // S8: grouped settings cards. Language and appearance apply instantly; scan mode applies on the next scan.
 export default function Settings() {
   const { c, t, pop, prefs, setPref, setTheme, versions } = useApp();
   const theme = (prefs.theme as ThemePref) || 'light';
   const scanMode = prefs.scan_mode || 'AUTO';
+  const insets = useSafeAreaInsets();
 
   return (
-    <ScrollView contentContainerStyle={{ paddingBottom: 48 }}>
+    <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + FAB_CLEARANCE }}>
       <Header title={t('settings_title')} onBack={pop} />
       <View style={{ paddingHorizontal: 20, gap: 14 }}>
         <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
@@ -39,6 +41,13 @@ export default function Settings() {
         <Group icon="shield" tint={c.protein} title={t('settings_privacy')}>
           <Txt muted>{t('privacy_body')}</Txt>
         </Group>
+
+        {/* Clears the seen tips and goes back, so Home shows them again straight away. */}
+        <Card onPress={() => { setPref('tips_seen', ''); pop(); }} style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          <Badge icon="sparkle" tint={c.accent} />
+          <Txt v="title" style={{ flex: 1 }}>{t('settings_show_tips')}</Txt>
+          <Icon name="chevronRight" size={20} color={c.muted} />
+        </Card>
 
         <Group icon="info" tint={c.carbs} title={t('settings_about')}>
           <Txt muted>{t('about_body')}</Txt>

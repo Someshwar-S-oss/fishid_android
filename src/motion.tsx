@@ -2,7 +2,7 @@
 // its screen is covered, and is skipped entirely when the phone's "Remove animations" setting is on.
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, StyleProp, StyleSheet, useWindowDimensions, View, ViewStyle } from 'react-native';
-import Svg, { Circle, Defs, LinearGradient, Path, Stop } from 'react-native-svg';
+import Svg, { Circle, Path } from 'react-native-svg';
 import { Txt, Variant } from './ui';
 
 let reduceMotion = false;
@@ -189,28 +189,5 @@ export function Float({ children, range = 6, tilt = 3, duration = 2200, style }:
       }]}>
       {children}
     </Animated.View>
-  );
-}
-
-/** Flat illustrated fish (brand teal with a marigold band), for empty states and headers. */
-export function FishArt({ width = 150, body = '#0E6E7E', band = '#F2A541', eye = '#0B1020' }: { width?: number; body?: string; band?: string; eye?: string }) {
-  return (
-    <Svg width={width} height={width * (80 / 120)} viewBox="0 0 120 80">
-      <Defs>
-        <LinearGradient id="fishBody" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor={body} stopOpacity={1} />
-          <Stop offset="1" stopColor={body} stopOpacity={0.72} />
-        </LinearGradient>
-      </Defs>
-      <Path d="M44,19C52,6 67,5 76,16Z" fill={body} opacity={0.8} />
-      <Path d="M58,58C62,68 70,70 74,64Z" fill={body} opacity={0.8} />
-      <Path d="M90,40L114,18C118,30 118,50 114,62Z" fill={body} opacity={0.85} />
-      <Path d="M8,40C26,12 66,6 94,40C66,74 26,68 8,40Z" fill="url(#fishBody)" />
-      <Path d="M50,17C57,30 57,50 50,63L60,64C66,50 66,30 60,16Z" fill={band} opacity={0.9} />
-      <Path d="M18,46C36,60 66,60 86,46C66,54 36,54 18,46Z" fill="#FFFFFF" opacity={0.28} />
-      <Path d="M38,27C43,35 43,45 38,53" stroke="#FFFFFF" strokeOpacity={0.5} strokeWidth={2} strokeLinecap="round" fill="none" />
-      <Circle cx={25} cy={36} r={5.5} fill="#FFFFFF" />
-      <Circle cx={26} cy={36} r={2.8} fill={eye} />
-    </Svg>
   );
 }

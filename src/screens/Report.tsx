@@ -3,13 +3,15 @@ import { KeyboardAvoidingView, ScrollView, TextInput, ToastAndroid, View } from 
 import { FishID, fileUri } from '../native';
 import { percent } from '../i18n';
 import { font } from '../theme';
-import { Btn, Card, FishImage, Header, Icon, Tap, Txt, useApp } from '../ui';
+import { Btn, Card, FAB_CLEARANCE, FishImage, Header, Icon, Tap, Txt, useApp } from '../ui';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const DONT_KNOW = '';
 
 // S7: saved to the local report queue (filesDir/reports); the copy says "saved", not "sent".
 export default function Report({ scanId }: { scanId: string }) {
   const { c, t, history, fish, fishById, pop } = useApp();
+  const insets = useSafeAreaInsets();
   const scan = history.find(s => s.id === scanId);
   const [answer, setAnswer] = useState<string | null>(null); // null = not chosen yet
   const [place, setPlace] = useState('');
@@ -49,7 +51,7 @@ export default function Report({ scanId }: { scanId: string }) {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior="height">
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + FAB_CLEARANCE }} keyboardShouldPersistTaps="handled">
         <Header title={t('report_title')} onBack={pop} />
         <View style={{ paddingHorizontal: 20, gap: 14 }}>
           <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 14, padding: 12 }}>

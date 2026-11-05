@@ -3,9 +3,9 @@ import { Alert, SectionList, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FishID, Scan } from '../native';
 import { formatDay } from '../i18n';
-import { Btn, Card, Icon, Tap, Txt, useApp } from '../ui';
+import { Btn, Card, Icon, Mark, Tap, Txt, useApp } from '../ui';
 import { ScanRow } from './Home';
-import { Bubbles, FishArt, Float, Reveal, stagger } from '../motion';
+import { Bubbles, Float, Reveal, stagger } from '../motion';
 
 // S6: on-device scans grouped by day; tap to reopen, trash to delete, Clear all with confirmation.
 export default function History() {
@@ -55,9 +55,9 @@ export default function History() {
         <Card style={{ alignItems: 'center', paddingVertical: 40, marginTop: 24, overflow: 'hidden' }}>
           <View style={{ width: 160, height: 120, borderRadius: 60, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
             <Bubbles color={c.accent} height={110} spots={[0.2, 0.75, 0.85]} />
-            <Float><FishArt width={120} body={c.accent} band={c.marigold} /></Float>
+            <Float><Mark size={112} color={c.accent} cut={c.accentSoft} /></Float>
           </View>
-          <Txt v="headline" style={{ marginTop: 14 }}>{t('history_empty_title')}</Txt>
+          <Txt v="headline" style={{ marginTop: 14, textAlign: 'center' }}>{t('history_empty_title')}</Txt>
           <Txt muted style={{ textAlign: 'center', marginBottom: 18 }}>{t('history_empty_body')}</Txt>
           <Btn label={t('nav_scan')} icon="scan" onPress={() => push({ name: 'scanner' })} small />
         </Card>

@@ -23,6 +23,12 @@
     <string name="onboarding_next">Next</string>
     <string name="onboarding_skip">Skip</string>
     <string name="onboarding_start">Start scanning</string>
+    <string name="onboarding_welcome_title">Welcome to FishID</string>
+    <string name="tip_search">Search any fish by its Tamil or English name</string>
+    <string name="tip_language">Switch between English and Tamil any time</string>
+    <string name="tip_scan">Tap here to identify a fish with your camera</string>
+    <string name="tip_frame">Fit the whole fish sideways inside the frame</string>
+    <string name="tip_continue">Tap anywhere to continue</string>
     <string name="permission_camera_title">Camera access needed</string>
     <string name="permission_camera_body">FishID uses the camera only to identify fish. Your photos stay on your phone.</string>
     <string name="permission_allow">Allow camera</string>
@@ -39,14 +45,10 @@
     <string name="scan_flash_off_description">Turn flash off</string>
     <string name="scan_switched_to_tap">Switched to tap mode for smoother scanning on this phone</string>
     <string name="scan_camera_error">The camera couldn\'t start. Close other camera apps and try again.</string>
-    <string name="home_scan_cta_title">Identify a fish</string>
-    <string name="home_scan_cta_body">Point your camera at a fish to see its name, price and nutrition.</string>
     <string name="home_recent">Recent scans</string>
     <string name="home_market_prices">Market prices</string>
-    <string name="home_how_it_works">How it works</string>
     <string name="home_see_all">See all</string>
-    <string name="scanner_title">Scanner</string>
-    <string name="result_match_score">Match score</string>
+    <string name="home_search_title">What fish is this?</string>
     <string name="nutrition_energy">Energy</string>
     <!-- args: kcal -->
     <string name="nutrition_kcal">%1$s kcal</string>
@@ -88,6 +90,8 @@
     <string name="price_updated">Updated %1$s</string>
     <string name="price_note">Prices change with market and season.</string>
     <string name="price_unavailable">Price not available</string>
+    <string name="price_scale_low">Cheaper</string>
+    <string name="price_scale_high">Pricier</string>
     <string name="nutrition_title">Nutrition per 100 g</string>
     <!-- args: grams -->
     <string name="nutrition_protein_highlight">%1$s g of protein in every 100 g</string>
@@ -191,6 +195,7 @@
     <string name="settings_downloading">Downloading update…</string>
     <string name="settings_privacy">Privacy</string>
     <string name="privacy_body">Photos are processed on your phone and are not uploaded. Your scan history stays on this phone.</string>
+    <string name="settings_show_tips">Show tips again</string>
     <string name="settings_about">About FishID</string>
     <string name="about_body">FishID helps you identify commercially important fish and learn about them.</string>
     <string name="language_english" translatable="false">English</string>

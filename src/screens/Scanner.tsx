@@ -3,7 +3,7 @@ import { ActivityIndicator, Animated, AppState, Easing, Linking, PermissionsAndr
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, FishID, useScanState } from '../native';
 import { Btn, CircleBtn, Icon, IconName, Tap, Txt, useApp } from '../ui';
-import { useAwake } from '../motion';
+import { useTips, useTipTarget } from '../coach';
 
 const CAMERA = PermissionsAndroid.PERMISSIONS.CAMERA;
 /** The frame is the model's crop: FRAME_FRACTION of the screen width (ml/ScanLogic.kt) at BRACKET_ASPECT 4:3 (ScanEngine.kt). */
@@ -45,6 +45,7 @@ export default function Scanner() {
   );
 }
 
+/** Minimal viewfinder (after Cal AI, pared down): close, four corners, one line of guidance, then flash · shutter · gallery. */
 function Viewfinder({ onBack, showTapNotice, onTapNoticeSeen }: { onBack: () => void; showTapNotice: boolean; onTapNoticeSeen: () => void }) {
   const { t } = useApp();
   const insets = useSafeAreaInsets();
@@ -63,7 +64,15 @@ function Viewfinder({ onBack, showTapNotice, onTapNoticeSeen }: { onBack: () => 
   const holding = state?.holding ?? false;
   const identifying = (state?.identifying ?? false) || picking;
   const mode: FrameMode = cameraError ? 'tap' : identifying ? 'busy' : holding ? 'hold' : live ? 'search' : 'tap';
+  // The hint also says when to press the shutter (tap mode), so no separate live/tap indicator is needed.
   const hint = cameraError ? t('scan_camera_error') : identifying ? t('scan_identifying') : !live ? t('scan_hint_tap') : holding ? t('scan_hint_hold_still') : t('scan_hint_frame');
+
+  // First time in the scanner: point at the frame once the screen has slid up.
+  const tips = useTips();
+  useEffect(() => {
+    const id = setTimeout(() => tips(['frame']), 800);
+    return () => clearTimeout(id);
+  }, [tips]);
 
   const pick = async () => {
     setPicking(true);
@@ -77,64 +86,51 @@ function Viewfinder({ onBack, showTapNotice, onTapNoticeSeen }: { onBack: () => 
       <ScanFrame mode={mode} hint={hint} />
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#fff', opacity: flash }]} />
 
-      {/* Top: back · title. The live/tap mode lives in the tray, where long Tamil labels have room. */}
-      <View style={{ position: 'absolute', top: insets.top + 8, left: 16, right: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        {/* Title centred on the screen, not in the space left between the unequal side controls. */}
-        <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]} pointerEvents="none">
-          <Txt v="title" color="#fff">{t('scanner_title')}</Txt>
-        </View>
-        <CircleBtn icon="back" onPhoto label={t('action_back')} onPress={onBack} />
+      <View style={{ position: 'absolute', top: insets.top + 8, left: 16 }}>
+        <RoundBtn icon="close" label={t('action_back')} onPress={onBack} />
       </View>
 
-      <View style={{ position: 'absolute', left: 0, right: 0, bottom: insets.bottom + 20, alignItems: 'center', gap: 18, paddingHorizontal: 20 }}>
+      <View style={{ position: 'absolute', left: 0, right: 0, bottom: insets.bottom + 28, gap: 18, paddingHorizontal: 20 }}>
         {state?.switchedToTap && showTapNotice && (
-          <Tap onPress={() => { onTapNoticeSeen(); FishID.dismissTapNotice(); }} style={[glass, { borderRadius: 20, padding: 14, flexDirection: 'row', gap: 10, alignItems: 'center' }]}>
+          <Tap onPress={() => { onTapNoticeSeen(); FishID.dismissTapNotice(); }} style={{ backgroundColor: DARK, borderRadius: 18, padding: 14, flexDirection: 'row', gap: 10, alignItems: 'center' }}>
             <Icon name="info" size={20} color="#fff" />
             <Txt v="label" color="#fff" style={{ flex: 1 }}>{t('scan_switched_to_tap')}</Txt>
             <Icon name="close" size={18} color="#fff" />
           </Tap>
         )}
-
-        {/* Tray (Cal AI's "Scan food" strip): scan mode, gallery, flash */}
-        <View style={[glass, { flexDirection: 'row', alignItems: 'center', padding: 5, gap: 4, maxWidth: '100%' }]}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fff', borderRadius: 999, paddingHorizontal: 16, minHeight: 42, flexShrink: 1 }}>
-            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: live ? LOCK_GREEN : '#111' }} />
-            <Txt v="label" color="#111" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={{ fontWeight: '700', flexShrink: 1 }}>{t(live ? 'scan_mode_live' : 'scan_mode_tap')}</Txt>
-          </View>
-          <TrayBtn icon="gallery" label={t('scan_gallery_description')} onPress={pick} disabled={identifying} />
-          {state?.hasFlash && (
-            <TrayBtn icon="flash" active={torch} label={t(torch ? 'scan_flash_off_description' : 'scan_flash_on_description')} onPress={() => { FishID.setTorch(!torch); setTorch(!torch); }} />
-          )}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18 }}>
+          {state?.hasFlash ? (
+            <RoundBtn icon="flash" active={torch} label={t(torch ? 'scan_flash_off_description' : 'scan_flash_on_description')} onPress={() => { FishID.setTorch(!torch); setTorch(!torch); }} />
+          ) : <View style={{ width: 52 }} />}
+          <Tap
+            onPress={shoot}
+            disabled={identifying}
+            scale={0.9}
+            accessibilityRole="button"
+            accessibilityLabel={t('scan_shutter_description')}
+            style={{ width: 80, height: 80, borderRadius: 40, borderWidth: 3, borderColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
+            <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
+              {identifying && <ActivityIndicator color="#111" />}
+            </View>
+          </Tap>
+          <RoundBtn icon="gallery" label={t('scan_gallery_description')} onPress={pick} disabled={identifying} />
         </View>
-
-        <Tap
-          onPress={shoot}
-          disabled={identifying}
-          scale={0.9}
-          accessibilityRole="button"
-          accessibilityLabel={t('scan_shutter_description')}
-          style={{ width: 84, height: 84, borderRadius: 42, borderWidth: 4, borderColor: 'rgba(255,255,255,0.9)', alignItems: 'center', justifyContent: 'center' }}>
-          <View style={{ width: 66, height: 66, borderRadius: 33, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
-            {identifying ? <ActivityIndicator color="#111" /> : <Icon name="scan" size={28} color="#111" />}
-          </View>
-        </Tap>
       </View>
     </View>
   );
 }
 
 const LOCK_GREEN = '#3DDC84';
-const BEAM = '#8EEBF5';
 const RADIUS = 26;
 const CORNER = 44;
-/** Frosted-glass surface for controls over the camera. */
-const glass = { backgroundColor: 'rgba(20,20,24,0.42)', borderRadius: 999, borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' } as const;
+/** Cal AI's dark round controls over the camera. */
+const DARK = 'rgba(28,28,30,0.72)';
 
-function TrayBtn({ icon, label, onPress, active, disabled }: { icon: IconName; label: string; onPress: () => void; active?: boolean; disabled?: boolean }) {
+function RoundBtn({ icon, label, onPress, active, disabled }: { icon: IconName; label: string; onPress: () => void; active?: boolean; disabled?: boolean }) {
   return (
-    <Tap onPress={onPress} disabled={disabled} accessibilityRole="button" accessibilityLabel={label}
-      style={{ width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: active ? '#fff' : 'transparent', opacity: disabled ? 0.5 : 1 }}>
-      <Icon name={icon} size={20} color={active ? '#111' : '#fff'} />
+    <Tap onPress={onPress} disabled={disabled} accessibilityRole="button" accessibilityLabel={label} hitSlop={6}
+      style={{ width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', backgroundColor: active ? '#fff' : DARK, opacity: disabled ? 0.5 : 1 }}>
+      <Icon name={icon} size={22} color={active ? '#111' : '#fff'} />
     </Tap>
   );
 }
@@ -142,39 +138,20 @@ function TrayBtn({ icon, label, onPress, active, disabled }: { icon: IconName; l
 type FrameMode = 'search' | 'hold' | 'tap' | 'busy';
 
 /**
- * Exactly the area the model sees (ScanEngine crops to it). Soft scrim outside, thin rounded corners that breathe
- * while searching, a light beam sweeping through, and a green lock with a check when the fish holds still.
+ * Exactly the area the model sees (ScanEngine crops to it), marked by four thin corners and nothing else.
+ * They turn green and close in a little when the fish holds still, and pulse while identifying.
  */
 function ScanFrame({ mode, hint }: { mode: FrameMode; hint: string }) {
+  const frameTip = useTipTarget('frame', RADIUS);
   const { width, height } = useWindowDimensions();
   const w = width * FRAME_FRACTION;
   const h = w / FRAME_ASPECT;
-  const scrim = 2000; // border thick enough to cover the screen around the cut-out
   const color = mode === 'hold' ? LOCK_GREEN : '#FFFFFF';
 
-  const sweep = useRef(new Animated.Value(0)).current;
-  const breathe = useRef(new Animated.Value(0)).current;
   const lock = useRef(new Animated.Value(0)).current;
   const pulse = useRef(new Animated.Value(1)).current;
-  const awake = useAwake(); // a result screen covers the scanner: stop sweeping behind it
   useEffect(() => {
-    if (mode !== 'search' || !awake) return;
-    sweep.setValue(0);
-    const loops = [
-      Animated.loop(Animated.sequence([
-        Animated.timing(sweep, { toValue: 1, duration: 2400, easing: Easing.inOut(Easing.cubic), useNativeDriver: true }),
-        Animated.delay(250),
-      ])),
-      Animated.loop(Animated.sequence([
-        Animated.timing(breathe, { toValue: 1, duration: 1300, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(breathe, { toValue: 0, duration: 1300, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      ])),
-    ];
-    loops.forEach(l => l.start());
-    return () => { loops.forEach(l => l.stop()); breathe.setValue(0); };
-  }, [mode, sweep, breathe, awake]);
-  useEffect(() => {
-    Animated.spring(lock, { toValue: mode === 'hold' ? 1 : 0, useNativeDriver: true, speed: 16, bounciness: 12 }).start();
+    Animated.spring(lock, { toValue: mode === 'hold' ? 1 : 0, useNativeDriver: true, speed: 16, bounciness: 8 }).start();
   }, [mode, lock]);
   useEffect(() => {
     if (mode !== 'busy') return pulse.setValue(1);
@@ -186,11 +163,7 @@ function ScanFrame({ mode, hint }: { mode: FrameMode; hint: string }) {
     return () => loop.stop();
   }, [mode, pulse]);
 
-  // Each corner drifts out a few px and back while searching, and snaps inward on lock.
-  const drift = (sign: number) => Animated.add(
-    breathe.interpolate({ inputRange: [0, 1], outputRange: [0, sign * 5] }),
-    lock.interpolate({ inputRange: [0, 1], outputRange: [0, -sign * 8] }),
-  );
+  const inset = (sign: number) => lock.interpolate({ inputRange: [0, 1], outputRange: [0, -sign * 6] });
   const radiusKey = { tl: 'borderTopLeftRadius', tr: 'borderTopRightRadius', bl: 'borderBottomLeftRadius', br: 'borderBottomRightRadius' } as const;
   const corner = (k: 'tl' | 'tr' | 'bl' | 'br') => {
     const top = k[0] === 't';
@@ -201,8 +174,8 @@ function ScanFrame({ mode, hint }: { mode: FrameMode; hint: string }) {
         style={{
           position: 'absolute', width: CORNER, height: CORNER, borderColor: color, [radiusKey[k]]: RADIUS,
           top: top ? 0 : undefined, bottom: top ? undefined : 0, left: left ? 0 : undefined, right: left ? undefined : 0,
-          borderTopWidth: top ? 4 : 0, borderBottomWidth: top ? 0 : 4, borderLeftWidth: left ? 4 : 0, borderRightWidth: left ? 0 : 4,
-          transform: [{ translateX: drift(left ? -1 : 1) }, { translateY: drift(top ? -1 : 1) }],
+          borderTopWidth: top ? 3 : 0, borderBottomWidth: top ? 0 : 3, borderLeftWidth: left ? 3 : 0, borderRightWidth: left ? 0 : 3,
+          transform: [{ translateX: inset(left ? -1 : 1) }, { translateY: inset(top ? -1 : 1) }],
         }}
       />
     );
@@ -210,37 +183,16 @@ function ScanFrame({ mode, hint }: { mode: FrameMode; hint: string }) {
 
   return (
     <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', transform: [{ translateY: -height * FRAME_SHIFT }] }]} pointerEvents="none">
-      <View style={{ position: 'absolute', width: w + scrim * 2, height: h + scrim * 2, borderWidth: scrim, borderRadius: scrim + RADIUS, borderColor: 'rgba(0,0,0,0.38)' }} />
-
-      {/* Status pill sits just below the frame, where the eye already is. */}
-      <View style={[glass, { position: 'absolute', top: '50%', marginTop: h / 2 + 20, borderRadius: 20, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 8, minHeight: 38, maxWidth: w }]}>
-        {mode === 'busy' ? <ActivityIndicator size="small" color="#fff" /> : <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: mode === 'hold' ? LOCK_GREEN : mode === 'search' ? BEAM : '#fff' }} />}
-        <Txt v="label" color="#fff" numberOfLines={2} style={{ flexShrink: 1, fontWeight: '600', textAlign: 'center' }}>{hint}</Txt>
-      </View>
-
+      <View ref={frameTip} collapsable={false} pointerEvents="none" style={{ position: 'absolute', width: w, height: h }} />
       <Animated.View style={{ width: w, height: h, opacity: pulse }}>
-        <View style={[StyleSheet.absoluteFill, { borderRadius: RADIUS, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }]}>
-          {/* Guide: a faint sideways fish shows how to frame it. */}
-          {mode === 'search' && <View style={{ opacity: 0.16 }}><Icon name="fish" size={Math.round(w * 0.4)} color="#FFFFFF" stroke={1} /></View>}
-          <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: LOCK_GREEN, opacity: lock.interpolate({ inputRange: [0, 1], outputRange: [0, 0.14] }) }]} />
-          {mode === 'search' && (
-            <Animated.View
-              style={{
-                position: 'absolute', left: 0, right: 0, top: 0, height: 90,
-                opacity: sweep.interpolate({ inputRange: [0, 0.1, 0.85, 1], outputRange: [0, 1, 1, 0] }),
-                transform: [{ translateY: sweep.interpolate({ inputRange: [0, 1], outputRange: [-88, h - 2] }) }],
-              }}>
-              <View style={{ flex: 1, backgroundImage: 'linear-gradient(to bottom, rgba(142,235,245,0), rgba(142,235,245,0.22))' }} />
-              <View style={{ height: 2, backgroundImage: 'linear-gradient(to right, rgba(142,235,245,0), #E8FDFF, rgba(142,235,245,0))', boxShadow: `0px 0px 12px 2px ${BEAM}` }} />
-            </Animated.View>
-          )}
-        </View>
         {(['tl', 'tr', 'bl', 'br'] as const).map(corner)}
-        {/* Lock badge pops onto the top-right corner, leaving the fish visible. */}
-        <Animated.View style={{ position: 'absolute', top: -14, right: -14, width: 40, height: 40, borderRadius: 20, backgroundColor: LOCK_GREEN, alignItems: 'center', justifyContent: 'center', opacity: lock, transform: [{ scale: lock }] }}>
-          <Icon name="check" size={22} color="#0B2A14" stroke={3} />
-        </Animated.View>
       </Animated.View>
+      {/* One line of guidance just below the frame, where the eye already is. */}
+      {/* A fixed width (not maxWidth): an absolutely placed text sized to its content measured one line and cut the second in Tamil. */}
+      <Txt v="label" color="#fff" numberOfLines={3}
+        style={{ position: 'absolute', top: '50%', marginTop: h / 2 + 22, width: w, textAlign: 'center', fontWeight: '600', textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 6 }}>
+        {hint}
+      </Txt>
     </View>
   );
 }
