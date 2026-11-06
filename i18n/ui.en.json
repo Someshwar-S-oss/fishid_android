@@ -151,6 +151,7 @@
   "profile_report_link": "Wrong fish? Tell us",
   "profile_share_text": "{name} ({scientific_name}), identified with FishID",
   "profile_source": "Source: {source}",
+  "profile_fishbase_link": "View on FishBase",
 
   "catalogue_title": "Fish guide",
   "catalogue_search_hint": "Search in Tamil or English",

@@ -10,6 +10,8 @@ import android.os.Build
 import android.os.PowerManager
 import android.os.SystemClock
 import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.ImageProxy
 import androidx.core.content.ContextCompat
 import androidx.exifinterface.media.ExifInterface
@@ -49,6 +51,9 @@ class ScanEngine(private val context: Context, val analyzerExecutor: Executor) :
     private val tapRequested = AtomicBoolean(false)
     @Volatile private var paused = false
     @Volatile var classifier: Classifier? = null
+
+    /** Full-resolution stills for the saved photo (set by the camera view once bound). */
+    @Volatile var stillCapture: ImageCapture? = null
 
     /** Share of each camera frame's width the model sees: the on-screen frame (set by the camera view). */
     @Volatile var cropWidth = FRAME_FRACTION
@@ -105,13 +110,14 @@ class ScanEngine(private val context: Context, val analyzerExecutor: Executor) :
             if (paused) return
             val tap = tapRequested.getAndSet(false)
             if (!live && !tap) return
-            val frame = it.toBitmap().upright(it.imageInfo.rotationDegrees).bracketArea(cropWidth, cropCenterY)
+            val full = it.toBitmap().upright(it.imageInfo.rotationDegrees)
+            val frame = full.bracketArea(cropWidth, cropCenterY)
             val t0 = SystemClock.elapsedRealtime()
             val preds = c.classify(frame)
             val now = SystemClock.elapsedRealtime()
             if (tap) {
                 paused = true
-                finish(frame, preds)
+                finishFromCamera(full, preds)
                 return
             }
             measure(now - t0)
@@ -119,7 +125,7 @@ class ScanEngine(private val context: Context, val analyzerExecutor: Executor) :
             val hold = lock.holding
             if (locked != null) {
                 paused = true
-                finish(frame, locked)
+                finishFromCamera(full, locked)
             } else {
                 main.execute { holding = hold }
             }
@@ -148,13 +154,32 @@ class ScanEngine(private val context: Context, val analyzerExecutor: Executor) :
         finish(bitmap, c.classify(bitmap))
     }
 
-    private fun finish(frame: Bitmap, preds: List<Prediction>) {
+    /**
+     * The model only sees the small preview crop; the user keeps a full-resolution still of the whole scene.
+     * Falls back to the whole (uncropped) preview frame if there's no still camera or the capture fails.
+     */
+    private fun finishFromCamera(preview: Bitmap, preds: List<Prediction>) {
+        val cap = stillCapture ?: return finish(preview, preds)
+        runCatching {
+            cap.takePicture(analyzerExecutor, object : ImageCapture.OnImageCapturedCallback() {
+                override fun onCaptureSuccess(image: ImageProxy) {
+                    val still = image.use { img -> runCatching { img.toBitmap().upright(img.imageInfo.rotationDegrees) }.getOrNull() }
+                    finish(still ?: preview, preds)
+                }
+
+                override fun onError(e: ImageCaptureException) = finish(preview, preds)
+            })
+        }.onFailure { finish(preview, preds) }
+    }
+
+    /** [photo] is what the user sees in history and on the result screens; the model's input isn't kept. */
+    private fun finish(photo: Bitmap, preds: List<Prediction>) {
         val outcome = decide(preds, ::threshold)
         val candidates = preds.filter { it.speciesId != null }.take(3).map { Candidate(it.speciesId!!, it.confidence) }
         val record = ScanRecord(
             id = UUID.randomUUID().toString(),
             timeMs = System.currentTimeMillis(),
-            photo = History.savePhoto(context, frame),
+            photo = History.savePhoto(context, photo),
             candidates = candidates,
             outcome = when (outcome) {
                 is Outcome.Match -> ScanRecord.Outcome.MATCH

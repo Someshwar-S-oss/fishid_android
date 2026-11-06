@@ -32,11 +32,13 @@ class CatalogTest {
         assertEquals(ta.species.localNameTa, ta.secondaryName(tamil = false))
     }
 
+    /** Nutrition and price are optional (FishBase has neither); fin counts don't apply to the crab. */
     @Test fun everyBundledSpeciesHasCoreFacts() {
         catalog.species.forEach {
-            assertTrue("${it.id} nutrition", it.nutritionG != null)
-            assertTrue("${it.id} meristics", it.meristics != null)
             assertTrue("${it.id} field marks", catalog.entry(it.id, "en")!!.fieldMarks.isNotEmpty())
+            assertTrue("${it.id} images", it.images.isNotEmpty())
+            it.images.forEach { img -> assertTrue("missing $img", File("src/main/assets/${Catalog.IMAGE_DIR}/$img").isFile) }
+            assertTrue("${it.id} meristics", it.meristics != null || it.id == "charybdis_natator")
         }
     }
 
@@ -45,6 +47,23 @@ class CatalogTest {
         val info = Catalog.json.decodeFromString<ModelInfo>(File("src/main/assets/model/model.json").readText())
         val problem = validateModel(info, info.labels.size, catalog.species.map { it.id }.toSet(), appVersion = 1, dataVersion = catalog.dataVersion)
         assertNull(problem, problem)
+    }
+
+    /** The admin site's single-file catalog: newer and keeping every species → accepted; otherwise the phone keeps its data. */
+    @Test fun downloadedCatalogReplacesOnlyWhenNewerAndComplete() {
+        fun remote(version: Int, ids: List<String>): Catalog {
+            val species = ids.joinToString(",") { "{\"id\":\"$it\",\"scientific_name\":\"x\",\"price_inr_per_kg\":999}" }
+            return Catalog.parse(
+                """{"data_version":$version,"updated":"2026-11-05","species":[$species],"text":{"en":{"${ids[0]}":{"common_name":"Remote name"}}}}""",
+            )
+        }
+        val ids = catalog.species.map { it.id }
+        val next = remote(catalog.dataVersion + 1, ids + "new_fish")
+        assertTrue(next.replaces(catalog))
+        assertEquals("Remote name", next.entry(ids[0], "ta")!!.commonName)
+        assertEquals(999, next.entry(ids[0], "en")!!.species.priceInrPerKg)
+        assertFalse(remote(catalog.dataVersion, ids).replaces(catalog))
+        assertFalse(remote(catalog.dataVersion + 1, ids.drop(1)).replaces(catalog))
     }
 
     @Test fun searchMatchesEveryNameInEveryScript() {

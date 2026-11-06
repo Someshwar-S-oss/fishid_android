@@ -1,14 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Dimensions, LayoutAnimation, ScrollView, Share, StatusBar, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { fileUri, Fish } from '../native';
+import { fileUri, Fish, FishID } from '../native';
 import { codeLabel, grams, kcal, rupees } from '../i18n';
-import { Card, Chip, CircleBtn, FAB_CLEARANCE, FishImage, Icon, IconName, IucnBadge, Scientific, StatTile, Tap, Txt, useApp } from '../ui';
+import { Btn, Card, Chip, CircleBtn, FAB_CLEARANCE, FishImage, Icon, IconName, IucnBadge, Scientific, StatTile, Tap, Txt, useApp } from '../ui';
 import { CountUp, easeOut, Reveal } from '../motion';
 
 // S4: shopper order — price and food value first, then how to recognise it, then ecology and names.
-export default function Profile({ id, scanId }: { id: string; scanId?: string }) {
+export default function Profile({ id, scanId, morph }: { id: string; scanId?: string; morph?: number }) {
   const { c, t, fishById, history, pop, push } = useApp();
+  // Opened from a result's sheet: the page is built while hidden, so the content cascade waits until it shows.
+  const d0 = useRef(morph ? Math.max(0, morph - Date.now()) : 0).current;
   const insets = useSafeAreaInsets();
   const f = fishById[id];
   const scan = scanId ? history.find(s => s.id === scanId) : undefined;
@@ -51,18 +53,20 @@ export default function Profile({ id, scanId }: { id: string; scanId?: string })
         </Animated.View>
 
         <View style={{ marginTop: -32, backgroundColor: c.bg, borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingHorizontal: 20, paddingTop: 22 }}>
-          <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-            {f.price_inr_per_kg != null && <Chip icon="price" label={t('price_per_kg', { price: rupees(f.price_inr_per_kg) })} bg={c.accentSoft} fg={c.accent} />}
-            {f.iucn && <IucnBadge code={f.iucn} />}
-          </View>
-          <Txt v="display" style={{ marginTop: 12 }} accessibilityRole="header">{f.primary_name}</Txt>
-          {f.secondary_name ? <Txt v="title" muted style={{ fontWeight: '500' }}>{f.secondary_name}</Txt> : null}
-          <Scientific>{f.scientific_name}</Scientific>
+          <Reveal delay={d0} from={14}>
+            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+              {f.price_inr_per_kg != null && <Chip icon="price" label={t('price_per_kg', { price: rupees(f.price_inr_per_kg) })} bg={c.accentSoft} fg={c.accent} />}
+              {f.iucn && <IucnBadge code={f.iucn} />}
+            </View>
+            <Txt v="display" style={{ marginTop: 12 }} accessibilityRole="header">{f.primary_name}</Txt>
+            {f.secondary_name ? <Txt v="title" muted style={{ fontWeight: '500' }}>{f.secondary_name}</Txt> : null}
+            <Scientific>{f.scientific_name}</Scientific>
+          </Reveal>
 
-          <Reveal delay={120}><PriceCard f={f} /></Reveal>
+          <Reveal delay={d0 + 70}><PriceCard f={f} /></Reveal>
 
           {n && (
-            <Reveal delay={220}>
+            <Reveal delay={d0 + 140}>
               <Txt v="headline" style={{ marginTop: 28, marginBottom: 12 }}>{t('nutrition_title')}</Txt>
               <View style={{ flexDirection: 'row', gap: 10 }}>
                 <StatTile icon="flame" tint={c.energy} label={t('nutrition_energy')} value={t('nutrition_kcal', { kcal: kcal(n) })} />
@@ -115,6 +119,15 @@ export default function Profile({ id, scanId }: { id: string; scanId?: string })
               </View>
             ))}
           </Section>
+
+          <Btn
+            label={t('profile_fishbase_link')}
+            icon="globe"
+            kind="soft"
+            style={{ marginTop: 28 }}
+            // Non-fish (the crab) are on FishBase's sister site; their source says so.
+            onPress={() => FishID.openInApp(`https://www.${/sealifebase/i.test(f.source ?? '') ? 'sealifebase' : 'fishbase'}.se/summary/${f.scientific_name.trim().replace(/\s+/g, '-')}.html`)}
+          />
 
           <View style={{ alignItems: 'center', gap: 6, marginTop: 24 }}>
             {f.source ? <Txt v="caption" muted style={{ textAlign: 'center' }}>{t('profile_source', { source: f.source })}</Txt> : null}

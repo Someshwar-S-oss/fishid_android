@@ -1,0 +1,12 @@
+{
+  "name": "fishid-admin",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test.js"
+  },
+  "engines": {
+    "node": ">= 22"
+  }
+}

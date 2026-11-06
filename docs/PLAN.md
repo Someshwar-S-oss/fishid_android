@@ -329,7 +329,7 @@ GPU delegate skipped — XNNPACK on CPU handles a quantised 224 px classifier in
 2. **Profile + Fish guide** ✅ profile (photo carousel, sticky scroll-spy tabs), catalogue, search in every script.
 3. **Scanning** ✅ CameraX + LiteRT classifier, hybrid live/tap with auto-fallback, lock, compare-3, no-match. Runs on a **placeholder model** (ImageNet MobileNet v1 with fish-like classes mapped to the sample species) until the ML team's model lands.
 4. **Gallery, History, Report form** ✅ (reports queue in `filesDir/reports`, nothing is sent yet).
-5. **OTA updates** — manifest, checksum, validation, rollback. *Not started.*
+5. **OTA updates** — species data ✅: admin site (`admin/`, Render) publishes `catalog.json` to a public GitHub repo; `DataSync.kt` pulls it when the phone comes online / app foregrounds (≤ once per 5 min, ETag), validates, swaps atomically. Model OTA *not started*.
 6. **Polish & field test** — native-speaker Tamil review, TalkBack, font scale, budget phones at a real market, tune `LIVE_MAX_MEDIAN_MS` + thresholds, Play Store (`applicationId`, pre-API-26 launcher webps). *Not started.*
 
 Implementation notes (deviations from §8):

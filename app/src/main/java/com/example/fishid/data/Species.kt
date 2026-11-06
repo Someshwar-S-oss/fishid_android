@@ -11,8 +11,14 @@ import java.io.InputStream
 // Shapes of assets/data/*.json (see docs/PLAN.md §5). species.json holds language-neutral facts;
 // text.<lang>.json holds translatable prose keyed by species id.
 
+/** [text] is only filled in the downloaded catalog.json (admin site), which carries species and text in one file. */
 @Serializable
-data class SpeciesFile(val dataVersion: Int, val updated: String, val species: List<Species>)
+data class SpeciesFile(
+    val dataVersion: Int,
+    val updated: String,
+    val species: List<Species>,
+    val text: Map<String, Map<String, SpeciesText>> = emptyMap(),
+)
 
 @Serializable
 data class Species(
@@ -103,13 +109,31 @@ class Catalog(val dataVersion: Int, val updated: String, val species: List<Speci
             return Catalog(file.dataVersion, file.updated, file.species, text)
         }
 
+        /** The single-file catalog the admin site publishes (see DataSync). */
+        fun parse(text: String): Catalog = json.decodeFromString<SpeciesFile>(text).let { Catalog(it.dataVersion, it.updated, it.species, it.text) }
+
         @Volatile private var instance: Catalog? = null
 
-        // ponytail: bundled assets only; OTA data (phase 5) swaps the opener to filesDir when a newer version is active.
+        /** The downloaded catalog when it is newer than the bundled one and still valid, else the bundled assets. */
         fun get(context: Context): Catalog = instance ?: synchronized(this) {
-            instance ?: load { context.applicationContext.assets.open(it) }.also { instance = it }
+            instance ?: run {
+                val bundled = load { context.applicationContext.assets.open(it) }
+                val file = DataSync.file(context)
+                // A stale download (the app update shipped newer data) or one this app version can't read is dropped.
+                val downloaded = runCatching { parse(file.readText()) }.getOrNull()?.takeIf { it.replaces(bundled) }
+                if (downloaded == null) file.delete()
+                downloaded ?: bundled
+            }.also { instance = it }
+        }
+
+        internal fun set(catalog: Catalog) {
+            instance = catalog
         }
     }
+
+    /** Newer, and keeps every species we have: the model's labels must all still resolve to a species. */
+    fun replaces(current: Catalog): Boolean =
+        dataVersion > current.dataVersion && species.map { it.id }.containsAll(current.species.map { it.id })
 }
 
 /** Primary name follows the UI language; Tamil mode leads with the local market name. */

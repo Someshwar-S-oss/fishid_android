@@ -49,5 +49,155 @@
       "Strongly flattened tail stalk with a central keel; forked tail",
       "Adipose eyelid covers the eye except for a vertical slit"
     ]
+  },
+  "charybdis_natator": {
+    "common_name": "Ridged Swimming Crab",
+    "distribution": "Indo-West Pacific, from the Red Sea to China and Australia; fished commercially in India",
+    "field_marks": [
+      "Orange-red overall; ridges on the carapace and legs dark reddish brown",
+      "Carapace covered in very short fur, except on several bare, granular ridges running across its front half",
+      "Carapace up to about 17 cm wide",
+      "Lives on rocky, sandy or muddy bottoms and near coral reefs"
+    ]
+  },
+  "decapterus_russelli": {
+    "common_name": "Indian Scad",
+    "distribution": "Indo-West Pacific, from East Africa to Japan and Australia; the most common Decapterus in Indian Ocean coastal waters",
+    "field_marks": [
+      "Bluish-green back, silvery below",
+      "Small black spot on the gill cover",
+      "Lateral line curves down below the soft dorsal fin, with 30–44 strong scutes",
+      "Tail fin clear to yellowish",
+      "Soft dorsal and anal fins low, not sickle-shaped; pectoral fin slightly sickle-shaped",
+      "Snout longer than the eye"
+    ]
+  },
+  "escualosa_thoracata": {
+    "common_name": "White Sardine",
+    "distribution": "Northern Indian Ocean from Karachi to Myanmar, east to Thailand, Indonesia, the Philippines and Australia",
+    "field_marks": [
+      "Small, up to about 10 cm",
+      "Bright, broad silver stripe along the flank",
+      "Belly strongly keeled; body flattened side to side",
+      "Second bone above the upper jaw (supra-maxilla) almost rectangular",
+      "No spines in the dorsal or anal fins",
+      "Schools in shallow coastal water; juveniles enter river mouths"
+    ]
+  },
+  "lutjanus_vitta": {
+    "common_name": "Brownstripe Red Snapper",
+    "distribution": "Indo-West Pacific: Seychelles, then southern India to New Caledonia, north to the Ryukyu Islands",
+    "field_marks": [
+      "Whitish or pink body with a yellowish-brown to black stripe along the middle of the side",
+      "Adults have yellow dorsal, anal and tail fins",
+      "Juveniles: intensely black mid-side stripe with an eye-sized oval black spot below the last dorsal spines",
+      "Scale rows above the lateral line rise obliquely",
+      "Head profile moderately sloped; notch and knob on the gill-cover bone poorly developed"
+    ]
+  },
+  "nemipterus_bipunctatus": {
+    "common_name": "Delagoa Threadfin Bream",
+    "distribution": "Indian Ocean: Red Sea and East Africa to the Arabian Sea, Sri Lanka, Bay of Bengal and Andaman Sea",
+    "field_marks": [
+      "Upper body pinkish, silvery below",
+      "Two faint stripes on the snout",
+      "No spine below the eye (suborbital spine absent)",
+      "Long pelvic fins, reaching to or just past the start of the anal fin",
+      "Pectoral fins reach to or just behind the anus",
+      "Lives on sand or mud bottoms"
+    ]
+  },
+  "pelates_quadrilineatus": {
+    "common_name": "Fourlined Terapon",
+    "distribution": "Indo-West Pacific, from the Red Sea and East Africa to southern Japan, New Guinea and the Arafura Sea",
+    "field_marks": [
+      "Silvery body with 4–6 dark horizontal stripes",
+      "A black blotch behind the head below the dorsal-fin origin, sometimes another in front of the dorsal fin",
+      "Tail fin pale or slightly dusky",
+      "12–13 dorsal spines",
+      "Common in estuaries and brackish water; croaks when taken out of the water"
+    ]
+  },
+  "pomadasys_maculatus": {
+    "common_name": "Saddle Grunt",
+    "distribution": "Indo-West Pacific: throughout the Indian Ocean, north to China and south to Australia",
+    "field_marks": [
+      "Several large, dark, elongated blotches on the upper back, one forming a saddle on the nape",
+      "Moderately deep body",
+      "Two pairs of small pores on the chin",
+      "12 dorsal spines",
+      "Found over sand near reefs in coastal waters"
+    ]
+  },
+  "rastrelliger_kanagurta": {
+    "common_name": "Indian Mackerel",
+    "distribution": "Indo-West Pacific, from South Africa, the Red Sea and East Africa to Indonesia, China, Australia and Samoa",
+    "field_marks": [
+      "Black spot on the body near the lower edge of the pectoral fin",
+      "Head longer than the body is deep",
+      "Upper jaw partly hidden under the cheek bone, reaching about the rear edge of the eye",
+      "Very long, bristly gill rakers",
+      "Anal spine rudimentary",
+      "Schools in plankton-rich coastal bays and lagoons"
+    ]
+  },
+  "scolopsis_vosmeri": {
+    "common_name": "Vosmaer’s Monocle Bream",
+    "distribution": "Northern Indian Ocean, from Pakistan, western India and Sri Lanka through the Bay of Bengal and Andaman Sea to western Indonesia",
+    "field_marks": [
+      "Most body scales with a black spot; tail stalk white",
+      "Broad white bar from the nape onto the gill cover, and a white patch below the eye",
+      "Dorsal, anal and pelvic fins crimson or orange-red",
+      "Large backward-pointing spine below the eye, with a small forward-pointing spine just above it",
+      "Second anal-fin spine longer and stronger than the first and third",
+      "Juveniles lack the nape bar and have a dark-edged white band from behind the eye to the tail stalk"
+    ]
+  },
+  "selar_crumenophthalmus": {
+    "common_name": "Bigeye Scad",
+    "distribution": "Circumtropical; in the Indo-Pacific from East Africa to southern Japan, Hawaii and New Caledonia",
+    "field_marks": [
+      "Very large eye, almost fully covered by a fatty (adipose) eyelid",
+      "Metallic blue or blue-green back, silver or white below",
+      "Yellow stripe (may be absent) from the top of the gill opening to the tail stalk",
+      "Black spot on the edge of the gill cover",
+      "Deep furrow on the shoulder girdle with a large bump just above it",
+      "29–42 small scutes on the lateral line; first two anal spines detached"
+    ]
+  },
+  "sphyraena_obtusata": {
+    "common_name": "Obtuse Barracuda",
+    "distribution": "Indo-Pacific, from the Red Sea and East Africa to Samoa, north to the Ryukyu Islands, south to Australia",
+    "field_marks": [
+      "Long, nearly cylindrical body with small scales; long, pointed head",
+      "Large horizontal mouth with the lower jaw sticking out",
+      "Green above, silvery below",
+      "First dorsal fin starts slightly before the tip of the pectoral fin",
+      "Pelvic fins well ahead of the pectoral-fin tip",
+      "Schools in bays, estuaries, seagrass beds and rocky reefs"
+    ]
+  },
+  "stolephorus_indicus": {
+    "common_name": "Indian Anchovy",
+    "distribution": "Indian Ocean, from the Red Sea to Ranong and Phuket, Thailand",
+    "field_marks": [
+      "Slender, elongate body, fairly round in cross-section, with a silver stripe along the flank",
+      "Light, translucent fleshy-brown colour",
+      "No dark pigment lines on the back between head and dorsal fin",
+      "2–6 small needle-like scutes on the belly in front of the pelvic fins",
+      "Short upper jaw with a pointed tip, reaching only to the front edge of the pre-gill cover",
+      "Anal fin starts below the middle of the dorsal fin"
+    ]
+  },
+  "terapon_jarbua": {
+    "common_name": "Jarbua Terapon",
+    "distribution": "Indo-Pacific, from the Red Sea and East Africa to Samoa, north to southern Japan, south to Australia",
+    "field_marks": [
+      "Oblong body, moderately flattened side to side",
+      "Lower spine on the gill cover extends well beyond the gill-cover flap",
+      "Exposed bone above the gill cover, serrated at the rear",
+      "Tail fin slightly notched (emarginate)",
+      "Shallow sandy bottoms near river mouths; juveniles and adults also in fresh water"
+    ]
   }
 }

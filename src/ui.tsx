@@ -19,7 +19,7 @@ export type Route =
   | { name: 'result'; scanId: string }
   | { name: 'compare'; scanId: string }
   | { name: 'nomatch'; scanId: string }
-  | { name: 'profile'; id: string; scanId?: string }
+  | { name: 'profile'; id: string; scanId?: string; morph?: number } // morph: when (ms) the result sheet finishes becoming this page
   | { name: 'report'; scanId: string }
   | { name: 'settings' };
 

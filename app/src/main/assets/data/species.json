@@ -1,6 +1,6 @@
 {
-  "data_version": 3,
-  "updated": "2026-10-24",
+  "data_version": 4,
+  "updated": "2026-11-06",
   "species": [
     {
       "id": "scolopsis_bimaculata",
@@ -138,13 +138,439 @@
       ],
       "iucn": "lc",
       "nutrition_g": {
-        "protein": 21.0,
+        "protein": 21,
         "fat": 1.3,
         "moisture": 75.4
       },
       "price_inr_per_kg": 226,
       "price_updated": "2024",
       "source": "FishBase (Froese & Pauly 2025); nutrition: Nordhagen et al. 2020, Foods 9(6):730 (Bay of Bengal); price: Charles Jeeva et al. 2026, Indian J. Fish. 73(2), Puducherry retail average for horse mackerel"
+    },
+    {
+      "id": "charybdis_natator",
+      "scientific_name": "Charybdis natator",
+      "scientific_name_ta": null,
+      "local_name_ta": null,
+      "local_name_roman": null,
+      "images": [
+        "charybdis_natator_1.jpg",
+        "charybdis_natator_2.jpg"
+      ],
+      "meristics": null,
+      "habitat": [
+        "marine"
+      ],
+      "feeding": null,
+      "vertical": "demersal",
+      "depth_m": [
+        5,
+        310
+      ],
+      "iucn": "ne",
+      "nutrition_g": null,
+      "price_inr_per_kg": null,
+      "price_updated": null,
+      "confidence_threshold": null,
+      "source": "SeaLifeBase (Palomares & Pauly 2025)"
+    },
+    {
+      "id": "decapterus_russelli",
+      "scientific_name": "Decapterus russelli",
+      "scientific_name_ta": null,
+      "local_name_ta": null,
+      "local_name_roman": null,
+      "images": [
+        "decapterus_russelli_1.jpg",
+        "decapterus_russelli_2.jpg"
+      ],
+      "meristics": {
+        "dorsal_spines": 9,
+        "dorsal_rays": 28,
+        "anal_spines": 3,
+        "anal_rays": 25
+      },
+      "habitat": [
+        "marine"
+      ],
+      "feeding": "planktivore",
+      "vertical": "benthopelagic",
+      "depth_m": [
+        40,
+        275
+      ],
+      "iucn": "lc",
+      "nutrition_g": null,
+      "price_inr_per_kg": null,
+      "price_updated": null,
+      "confidence_threshold": null,
+      "source": "FishBase (Froese & Pauly 2025)"
+    },
+    {
+      "id": "escualosa_thoracata",
+      "scientific_name": "Escualosa thoracata",
+      "scientific_name_ta": null,
+      "local_name_ta": null,
+      "local_name_roman": null,
+      "images": [
+        "escualosa_thoracata_1.jpg",
+        "escualosa_thoracata_2.jpg"
+      ],
+      "meristics": {
+        "dorsal_spines": 0,
+        "dorsal_rays": 13,
+        "anal_spines": 0,
+        "anal_rays": 14
+      },
+      "habitat": [
+        "marine",
+        "freshwater",
+        "brackish"
+      ],
+      "feeding": "planktivore",
+      "vertical": "pelagic",
+      "depth_m": [
+        0,
+        50
+      ],
+      "iucn": "lc",
+      "nutrition_g": null,
+      "price_inr_per_kg": null,
+      "price_updated": null,
+      "confidence_threshold": null,
+      "source": "FishBase (Froese & Pauly 2025)"
+    },
+    {
+      "id": "lutjanus_vitta",
+      "scientific_name": "Lutjanus vitta",
+      "scientific_name_ta": null,
+      "local_name_ta": null,
+      "local_name_roman": null,
+      "images": [
+        "lutjanus_vitta_1.jpg",
+        "lutjanus_vitta_2.jpg"
+      ],
+      "meristics": {
+        "dorsal_spines": 10,
+        "dorsal_rays": 12,
+        "anal_spines": 3,
+        "anal_rays": 8
+      },
+      "habitat": [
+        "marine",
+        "brackish",
+        "reef_associated"
+      ],
+      "feeding": "carnivore",
+      "vertical": "reef",
+      "depth_m": [
+        10,
+        72
+      ],
+      "iucn": "lc",
+      "nutrition_g": null,
+      "price_inr_per_kg": null,
+      "price_updated": null,
+      "confidence_threshold": null,
+      "source": "FishBase (Froese & Pauly 2025)"
+    },
+    {
+      "id": "nemipterus_bipunctatus",
+      "scientific_name": "Nemipterus bipunctatus",
+      "scientific_name_ta": null,
+      "local_name_ta": null,
+      "local_name_roman": null,
+      "images": [
+        "nemipterus_bipunctatus_1.jpg",
+        "nemipterus_bipunctatus_2.jpg"
+      ],
+      "meristics": {
+        "dorsal_spines": 10,
+        "dorsal_rays": 9,
+        "anal_spines": 3,
+        "anal_rays": 7
+      },
+      "habitat": [
+        "marine"
+      ],
+      "feeding": "carnivore",
+      "vertical": "demersal",
+      "depth_m": [
+        18,
+        100
+      ],
+      "iucn": "lc",
+      "nutrition_g": null,
+      "price_inr_per_kg": null,
+      "price_updated": null,
+      "confidence_threshold": null,
+      "source": "FishBase (Froese & Pauly 2025)"
+    },
+    {
+      "id": "pelates_quadrilineatus",
+      "scientific_name": "Pelates quadrilineatus",
+      "scientific_name_ta": null,
+      "local_name_ta": null,
+      "local_name_roman": null,
+      "images": [
+        "pelates_quadrilineatus_1.jpg",
+        "pelates_quadrilineatus_2.jpg"
+      ],
+      "meristics": {
+        "dorsal_spines": 12,
+        "dorsal_rays": 8,
+        "anal_spines": 3,
+        "anal_rays": 9
+      },
+      "habitat": [
+        "marine",
+        "brackish",
+        "reef_associated"
+      ],
+      "feeding": "carnivore",
+      "vertical": "reef",
+      "depth_m": [
+        0,
+        20
+      ],
+      "iucn": "ne",
+      "nutrition_g": null,
+      "price_inr_per_kg": null,
+      "price_updated": null,
+      "confidence_threshold": null,
+      "source": "FishBase (Froese & Pauly 2025)"
+    },
+    {
+      "id": "pomadasys_maculatus",
+      "scientific_name": "Pomadasys maculatus",
+      "scientific_name_ta": null,
+      "local_name_ta": null,
+      "local_name_roman": null,
+      "images": [
+        "pomadasys_maculatus_1.jpg",
+        "pomadasys_maculatus_2.jpg"
+      ],
+      "meristics": {
+        "dorsal_spines": 12,
+        "dorsal_rays": 13,
+        "anal_spines": 3,
+        "anal_rays": 7
+      },
+      "habitat": [
+        "marine",
+        "brackish",
+        "reef_associated"
+      ],
+      "feeding": "carnivore",
+      "vertical": "reef",
+      "depth_m": [
+        20,
+        110
+      ],
+      "iucn": "lc",
+      "nutrition_g": null,
+      "price_inr_per_kg": null,
+      "price_updated": null,
+      "confidence_threshold": null,
+      "source": "FishBase (Froese & Pauly 2025)"
+    },
+    {
+      "id": "rastrelliger_kanagurta",
+      "scientific_name": "Rastrelliger kanagurta",
+      "scientific_name_ta": null,
+      "local_name_ta": null,
+      "local_name_roman": null,
+      "images": [
+        "rastrelliger_kanagurta_1.jpg",
+        "rastrelliger_kanagurta_2.jpg"
+      ],
+      "meristics": {
+        "dorsal_spines": 8,
+        "dorsal_rays": 12,
+        "anal_spines": 0,
+        "anal_rays": 12
+      },
+      "habitat": [
+        "marine"
+      ],
+      "feeding": "planktivore",
+      "vertical": "pelagic",
+      "depth_m": [
+        20,
+        90
+      ],
+      "iucn": "lc",
+      "nutrition_g": null,
+      "price_inr_per_kg": null,
+      "price_updated": null,
+      "confidence_threshold": null,
+      "source": "FishBase (Froese & Pauly 2025)"
+    },
+    {
+      "id": "scolopsis_vosmeri",
+      "scientific_name": "Scolopsis vosmeri",
+      "scientific_name_ta": null,
+      "local_name_ta": null,
+      "local_name_roman": null,
+      "images": [
+        "scolopsis_vosmeri_1.jpg",
+        "scolopsis_vosmeri_2.jpg"
+      ],
+      "meristics": {
+        "dorsal_spines": 10,
+        "dorsal_rays": 9,
+        "anal_spines": 3,
+        "anal_rays": 7
+      },
+      "habitat": [
+        "marine",
+        "reef_associated"
+      ],
+      "feeding": null,
+      "vertical": "reef",
+      "depth_m": [
+        2,
+        30
+      ],
+      "iucn": "lc",
+      "nutrition_g": null,
+      "price_inr_per_kg": null,
+      "price_updated": null,
+      "confidence_threshold": null,
+      "source": "FishBase (Froese & Pauly 2025)"
+    },
+    {
+      "id": "selar_crumenophthalmus",
+      "scientific_name": "Selar crumenophthalmus",
+      "scientific_name_ta": null,
+      "local_name_ta": null,
+      "local_name_roman": null,
+      "images": [
+        "selar_crumenophthalmus_1.jpg",
+        "selar_crumenophthalmus_2.jpg"
+      ],
+      "meristics": {
+        "dorsal_spines": 9,
+        "dorsal_rays": 24,
+        "anal_spines": 3,
+        "anal_rays": 21
+      },
+      "habitat": [
+        "marine",
+        "reef_associated"
+      ],
+      "feeding": "carnivore",
+      "vertical": "reef",
+      "depth_m": [
+        0,
+        170
+      ],
+      "iucn": "lc",
+      "nutrition_g": null,
+      "price_inr_per_kg": null,
+      "price_updated": null,
+      "confidence_threshold": null,
+      "source": "FishBase (Froese & Pauly 2025)"
+    },
+    {
+      "id": "sphyraena_obtusata",
+      "scientific_name": "Sphyraena obtusata",
+      "scientific_name_ta": null,
+      "local_name_ta": null,
+      "local_name_roman": null,
+      "images": [
+        "sphyraena_obtusata_1.jpg",
+        "sphyraena_obtusata_2.jpg"
+      ],
+      "meristics": {
+        "dorsal_spines": 6,
+        "dorsal_rays": 9,
+        "anal_spines": 2,
+        "anal_rays": 9
+      },
+      "habitat": [
+        "marine",
+        "brackish",
+        "reef_associated"
+      ],
+      "feeding": "carnivore",
+      "vertical": "reef",
+      "depth_m": [
+        5,
+        200
+      ],
+      "iucn": "lc",
+      "nutrition_g": null,
+      "price_inr_per_kg": null,
+      "price_updated": null,
+      "confidence_threshold": null,
+      "source": "FishBase (Froese & Pauly 2025)"
+    },
+    {
+      "id": "stolephorus_indicus",
+      "scientific_name": "Stolephorus indicus",
+      "scientific_name_ta": null,
+      "local_name_ta": null,
+      "local_name_roman": null,
+      "images": [
+        "stolephorus_indicus_1.jpg",
+        "stolephorus_indicus_2.jpg"
+      ],
+      "meristics": {
+        "dorsal_spines": 0,
+        "dorsal_rays": 15,
+        "anal_spines": 0,
+        "anal_rays": 19
+      },
+      "habitat": [
+        "marine",
+        "brackish"
+      ],
+      "feeding": "planktivore",
+      "vertical": "pelagic",
+      "depth_m": [
+        20,
+        50
+      ],
+      "iucn": "lc",
+      "nutrition_g": null,
+      "price_inr_per_kg": null,
+      "price_updated": null,
+      "confidence_threshold": null,
+      "source": "FishBase (Froese & Pauly 2025)"
+    },
+    {
+      "id": "terapon_jarbua",
+      "scientific_name": "Terapon jarbua",
+      "scientific_name_ta": null,
+      "local_name_ta": null,
+      "local_name_roman": null,
+      "images": [
+        "terapon_jarbua_1.jpg",
+        "terapon_jarbua_2.jpg"
+      ],
+      "meristics": {
+        "dorsal_spines": 11,
+        "dorsal_rays": 9,
+        "anal_spines": 3,
+        "anal_rays": 7
+      },
+      "habitat": [
+        "marine",
+        "freshwater",
+        "brackish"
+      ],
+      "feeding": "omnivore",
+      "vertical": "demersal",
+      "depth_m": [
+        20,
+        350
+      ],
+      "iucn": "lc",
+      "nutrition_g": null,
+      "price_inr_per_kg": null,
+      "price_updated": null,
+      "confidence_threshold": null,
+      "source": "FishBase (Froese & Pauly 2025)"
     }
   ]
 }

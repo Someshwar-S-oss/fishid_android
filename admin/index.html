@@ -1,0 +1,1006 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FishID Studio</title>
+<link rel="icon" href="/logo.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hind+Madurai:wght@400;500;600;700&family=Noto+Serif:ital@1&display=swap" rel="stylesheet">
+<script>
+  // Theme before first paint: saved choice, else the system's.
+  try { document.documentElement.dataset.theme = localStorage.getItem('theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); } catch { document.documentElement.dataset.theme = 'light'; }
+</script>
+<style>
+  /* Same palette as the app (src/theme.ts): warm cream + ink pills in light, deep night blues in dark. */
+  :root {
+    --bg: #F6F4EF; --surface: #FFFFFF; --alt: #EFECE4; --ink: #111111; --muted: #5C5A55; --line: #E6E1D6;
+    --primary: #111111; --on-primary: #FFFFFF; --accent: #0E6E7E; --accent-soft: #DCEFF0; --marigold: #F2A541;
+    --success: #2E9E5B; --success-soft: #DFF3E6; --warn: #B86E00; --warn-soft: #FCEFD9; --danger: #C8423B; --hi: #FFF3C4;
+    --energy: #F26B3A; --protein: #E25D6B; --fat: #3E86F5; --carbs: #E3A21A; --moisture: #7FB8D6; --ash: #A79E8B;
+    --shadow: 0 6px 24px rgba(17,17,17,.07); --shadow-lg: 0 24px 60px rgba(17,17,17,.18); --glass: rgba(246,244,239,.82);
+    --sans: "Hind Madurai", system-ui, sans-serif; --serif: "Noto Serif", Georgia, serif;
+    --ease: cubic-bezier(.2,.8,.2,1); color-scheme: light;
+  }
+  :root[data-theme="dark"] {
+    --bg: #0B1020; --surface: #151B2E; --alt: #1D2540; --ink: #F2F3F8; --muted: #A6ACC0; --line: #27304D;
+    --primary: #F2F3F8; --on-primary: #0B1020; --accent: #62CBD8; --accent-soft: #163542; --marigold: #F6B860;
+    --success: #5BD08C; --success-soft: #163A2A; --warn: #F6B860; --warn-soft: #3A2D16; --danger: #FF7D74; --hi: #3A3216;
+    --energy: #FF8A5C; --protein: #FF7A88; --fat: #78A9FF; --carbs: #F4C04E; --moisture: #8FC6E3; --ash: #B9B2A2;
+    --shadow: 0 8px 28px rgba(0,0,0,.35); --shadow-lg: 0 24px 60px rgba(0,0,0,.55); --glass: rgba(11,16,32,.8); color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { font: 15px/1.5 var(--sans); background: var(--bg); color: var(--ink); -webkit-font-smoothing: antialiased; }
+  svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  a { color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; border: 0; background: var(--alt); border-radius: 999px; padding: 0 20px; font-weight: 600; text-decoration: none; transition: transform .15s var(--ease), background .15s, opacity .15s; }
+  .btn:hover { filter: brightness(.97); }
+  .btn:active { transform: scale(.97); }
+  .btn.primary { background: var(--primary); color: var(--on-primary); }
+  .btn.ghost { background: transparent; }
+  .btn.ghost:hover { background: var(--alt); }
+  .btn.icon { width: 40px; min-height: 40px; padding: 0; }
+  .btn:disabled { opacity: .45; cursor: default; transform: none; }
+  .tag { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px; font-size: 13.5px; font-weight: 600; background: var(--alt); white-space: nowrap; }
+  .tag.teal { background: var(--accent-soft); color: var(--accent); }
+  .tag.ok { background: var(--success-soft); color: var(--success); }
+  .tag.warn { background: var(--warn-soft); color: var(--warn); }
+  .tag .led { width: 7px; height: 7px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 22%, transparent); }
+  .sq { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; flex: none; color: var(--t, var(--accent)); background: color-mix(in srgb, var(--t, var(--accent)) 15%, transparent); }
+
+  /* ---------- Layout: list | editor | phone preview ---------- */
+  .app { display: grid; grid-template-columns: 296px minmax(0, 1fr) 424px; height: 100%; }
+  .side { display: flex; flex-direction: column; gap: 14px; padding: 22px 16px 16px; border-right: 1px solid var(--line); min-height: 0; background: var(--bg); }
+  .brand { display: flex; align-items: center; gap: 12px; padding: 0 4px; }
+  .brand img { width: 42px; height: 42px; border-radius: 13px; box-shadow: 0 6px 18px rgba(14,110,126,.3); }
+  .brand b { font-size: 18px; line-height: 1.15; display: block; letter-spacing: -.01em; }
+  .brand small { color: var(--muted); font-size: 13px; }
+  #pub { align-self: flex-start; margin-left: 4px; }
+  .search { display: flex; align-items: center; gap: 8px; background: var(--surface); border-radius: 999px; padding: 0 16px; color: var(--muted); box-shadow: var(--shadow); }
+  .search input { border: 0; background: transparent; padding: 11px 0; width: 100%; font: inherit; color: var(--ink); outline: none; }
+  .seg { display: flex; padding: 3px; border-radius: 999px; background: var(--alt); }
+  .seg button { flex: 1; border: 0; background: transparent; border-radius: 999px; padding: 6px 8px; font-size: 13px; font-weight: 600; color: var(--muted); white-space: nowrap; transition: background .2s, color .2s; }
+  .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  .seg button span { opacity: .6; margin-left: 3px; }
+  #list { display: flex; flex-direction: column; gap: 4px; overflow-y: auto; min-height: 0; flex: 1; margin: 0 -6px; padding: 2px 6px 8px; scrollbar-width: thin; }
+  .item { display: flex; align-items: center; gap: 12px; text-align: left; width: 100%; padding: 8px 12px 8px 8px; border: 0; border-radius: 18px; background: transparent; position: relative; transition: background .15s; }
+  .item:hover { background: var(--alt); }
+  .item[aria-current="true"] { background: var(--surface); box-shadow: var(--shadow); }
+  .thumb { width: 48px; height: 48px; border-radius: 14px; object-fit: cover; background: var(--alt); flex: none; display: grid; place-items: center; color: var(--muted); }
+  .item .txt { min-width: 0; flex: 1; }
+  .item .name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item .sci { font: italic 12.5px var(--serif); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item .price { font-size: 13px; font-weight: 700; }
+  .item .price.none { color: var(--warn); font-weight: 600; }
+  .item .dot { position: absolute; top: 6px; left: 46px; width: 12px; height: 12px; border-radius: 50%; background: var(--marigold); border: 2.5px solid var(--bg); }
+  .item[aria-current="true"] .dot { border-color: var(--surface); }
+  .empty { color: var(--muted); font-size: 14px; text-align: center; padding: 24px 8px; }
+  .sidefoot { border-top: 1px solid var(--line); padding: 12px 0 0; display: flex; flex-direction: column; gap: 2px; font-size: 14px; }
+  .sidefoot a, .sidefoot button { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 12px; color: var(--muted); text-decoration: none; border: 0; background: none; width: 100%; text-align: left; }
+  .sidefoot a:hover, .sidefoot button:hover { background: var(--alt); color: var(--ink); }
+  .sidefoot form { margin: 0; }
+
+  main { overflow-y: auto; min-height: 0; position: relative;
+    background: radial-gradient(900px 360px at 60% -120px, color-mix(in srgb, var(--accent-soft) 85%, transparent), transparent 70%); }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 26px 32px 40px; }
+  .top { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  .top .eyebrow { font-size: 13px; font-weight: 600; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; }
+  .top h2 { margin: 0; font-size: 26px; line-height: 1.25; letter-spacing: -.01em; }
+  .top .grow { flex: 1; min-width: 0; }
+  #pvOpen { display: none; }
+
+  .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+  .stat { display: flex; flex-direction: column; gap: 10px; background: var(--surface); border-radius: 20px; padding: 14px 16px; box-shadow: var(--shadow); min-width: 0; }
+  .stat small { display: block; font-size: 13px; color: var(--muted); }
+  .stat b { display: block; font-size: 22px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* ---------- Species header ---------- */
+  .hero { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 24px; background: var(--surface); border-radius: 28px; padding: 14px; box-shadow: var(--shadow); }
+  .photo { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .photo .main { position: relative; aspect-ratio: 4 / 3; border-radius: 20px; background: var(--alt); overflow: hidden; display: grid; place-items: center; color: var(--muted); }
+  .photo .main img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .photo .over { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); background: rgba(0,0,0,.45); color: #fff; backdrop-filter: blur(6px); }
+  .photo .thumbs { display: flex; gap: 6px; }
+  .photo .thumbs button { padding: 0; border: 2px solid transparent; border-radius: 11px; overflow: hidden; width: 56px; height: 42px; background: none; opacity: .65; transition: opacity .15s, border-color .15s; }
+  .photo .thumbs button:hover { opacity: 1; }
+  .photo .thumbs button[aria-pressed="true"] { border-color: var(--ink); opacity: 1; }
+  .photo .thumbs img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .hero-body { padding: 8px 10px 8px 0; display: flex; flex-direction: column; min-width: 0; }
+  .chips-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .hero h1 { margin: 12px 0 0; font-size: 32px; line-height: 1.15; font-weight: 700; letter-spacing: -.015em; }
+  .hero .second { font-size: 18px; font-weight: 500; color: var(--muted); }
+  .sciname { font: italic 15.5px var(--serif); color: var(--muted); }
+  .hero .id { font: 12px ui-monospace, monospace; color: var(--muted); opacity: .8; margin-top: 6px; }
+  .hero-actions { margin-top: auto; padding-top: 18px; display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* ---------- Tabs & form ---------- */
+  .tabbar { position: sticky; top: 0; z-index: 3; padding: 16px 0 14px; margin: 0 -4px; background: linear-gradient(var(--bg) 70%, transparent); }
+  .tabs { display: flex; gap: 2px; padding: 4px; background: var(--surface); border-radius: 999px; box-shadow: var(--shadow); overflow-x: auto; scrollbar-width: none; margin: 0 4px; }
+  .tab { flex: 1; border: 0; background: transparent; padding: 9px 14px; border-radius: 999px; font-weight: 600; color: var(--muted); white-space: nowrap; display: inline-flex; gap: 7px; align-items: center; justify-content: center; transition: background .2s, color .2s; }
+  .tab:hover { color: var(--ink); }
+  .tab[aria-selected="true"] { background: var(--primary); color: var(--on-primary); }
+  .tab .count { font-size: 11px; line-height: 18px; min-width: 18px; background: var(--marigold); color: #111; border-radius: 999px; padding: 0 5px; }
+  .card { background: var(--surface); border-radius: 24px; padding: 20px 22px 22px; box-shadow: var(--shadow); margin-bottom: 14px; animation: rise .35s var(--ease) both; }
+  .card:nth-child(2) { animation-delay: .05s; } .card:nth-child(3) { animation-delay: .1s; }
+  .card-h { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; }
+  .card-h h3 { margin: 0; font-size: 18px; line-height: 1.3; }
+  .card-h p { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.4; }
+  .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 18px; }
+  .fields.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .fields.five { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .f { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .f.wide { grid-column: 1 / -1; }
+  .f > .lbl { font-size: 13.5px; font-weight: 600; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  .lang { font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: var(--alt); color: var(--muted); letter-spacing: .02em; }
+  .lang.ta { background: var(--accent-soft); color: var(--accent); }
+  .f .help { font-size: 12.5px; color: var(--muted); }
+  .box { display: flex; align-items: center; background: var(--alt); border: 1.5px solid transparent; border-radius: 14px; transition: border-color .15s, background .15s, box-shadow .15s; }
+  .box:hover { border-color: var(--line); }
+  .box:focus-within { border-color: var(--ink); background: var(--surface); }
+  .box .adorn { padding: 0 12px; color: var(--muted); font-weight: 600; white-space: nowrap; }
+  .box .adorn:first-child { padding-right: 0; }
+  .box .adorn:last-child { padding-left: 0; }
+  .box input, .box textarea { flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; color: var(--ink); padding: 11px 13px; outline: none; }
+  .box textarea { min-height: 100px; resize: vertical; line-height: 1.6; }
+  .box input.serif { font: italic 15px var(--serif); }
+  .box.big input { font-size: 24px; font-weight: 700; padding: 8px 12px; }
+  .box.big .adorn { font-size: 18px; }
+  .changed .box, .changed .chips { box-shadow: 0 0 0 2px var(--marigold); background: var(--hi); border-radius: 14px; }
+  .changed .chips { padding: 6px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { border: 1.5px solid var(--line); background: var(--surface); border-radius: 999px; padding: 7px 15px; font-weight: 500; display: inline-flex; align-items: center; gap: 7px; transition: background .15s, border-color .15s, transform .15s var(--ease); }
+  .chip:hover { border-color: var(--ink); }
+  .chip:active { transform: scale(.96); }
+  .chip[aria-pressed="true"] { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+  .chip .sw { width: 10px; height: 10px; border-radius: 50%; border: 1px solid rgba(0,0,0,.2); }
+  .chip.iucn[aria-pressed="true"] { border-color: transparent; }
+
+  .ntiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .ntile { background: var(--alt); border-radius: 18px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+  .ntile small { font-size: 12.5px; color: var(--muted); display: block; }
+  .ntile b { font-size: 18px; }
+  .nbar { display: flex; gap: 2px; height: 14px; border-radius: 999px; overflow: hidden; background: var(--alt); margin: 0 0 10px; }
+  .nbar span { transition: width .5s var(--ease); }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+  .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+  .total { margin-left: auto; font-weight: 600; }
+  .total.off { color: var(--warn); }
+
+  /* ---------- Phone preview ---------- */
+  .preview { display: flex; flex-direction: column; gap: 14px; padding: 22px 24px; border-left: 1px solid var(--line); min-height: 0; background: var(--alt); align-items: center; }
+  .pv-head { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 376px; }
+  .pv-head .grow { flex: 1; min-width: 0; }
+  .pv-head b { display: block; font-size: 15px; }
+  .pv-head small { color: var(--muted); font-size: 12.5px; }
+  .langsw { display: flex; padding: 3px; border-radius: 999px; background: var(--surface); box-shadow: var(--shadow); }
+  .langsw button { min-width: 38px; height: 32px; border: 0; border-radius: 999px; background: transparent; font-weight: 700; padding: 0 10px; }
+  .langsw button[aria-pressed="true"] { background: var(--primary); color: var(--on-primary); }
+  #pvClose { display: none; }
+  .phone { flex: 1; min-height: 0; max-height: 780px; width: 100%; max-width: 376px; border-radius: 48px; padding: 10px; background: #0d0d0f; box-shadow: var(--shadow-lg), inset 0 0 0 2px #2a2a2e; position: relative; }
+  .phone::before { content: ""; position: absolute; top: 20px; left: 50%; width: 92px; height: 24px; margin-left: -46px; border-radius: 999px; background: #000; z-index: 2; }
+  .screen { height: 100%; border-radius: 38px; overflow-y: auto; background: var(--bg); scrollbar-width: none; position: relative; }
+  .screen::-webkit-scrollbar { display: none; }
+  .pv-photo { position: relative; aspect-ratio: 1 / .92; background: var(--alt); display: grid; place-items: center; color: var(--muted); }
+  .pv-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .pv-photo .over { position: absolute; bottom: 44px; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .pv-photo .over .tag { background: rgba(0,0,0,.45); color: #fff; font-size: 12px; }
+  .dots { display: flex; gap: 5px; }
+  .dots i { width: 5px; height: 5px; border-radius: 3px; background: rgba(255,255,255,.5); transition: width .2s; }
+  .dots i.on { width: 15px; background: #fff; }
+  .pv-btns { position: absolute; top: 44px; left: 14px; right: 14px; display: flex; justify-content: space-between; z-index: 1; }
+  .pv-btns span { width: 36px; height: 36px; border-radius: 50%; background: rgba(0,0,0,.35); color: #fff; display: grid; place-items: center; }
+  .pv-sheet { position: relative; margin-top: -28px; background: var(--bg); border-radius: 28px 28px 0 0; padding: 18px 16px 28px; font-size: 13.5px; line-height: 1.5; }
+  .pv-sheet .tag { font-size: 12px; padding: 3px 10px; }
+  .pv-sheet h4 { margin: 10px 0 0; font-size: 23px; line-height: 1.25; }
+  .pv-sheet .second { font-size: 15px; font-weight: 500; color: var(--muted); }
+  .pv-sheet .sciname { font-size: 13px; }
+  .pv-sheet h5 { margin: 22px 0 10px; font-size: 18px; }
+  .pv-card { background: var(--surface); border-radius: 20px; padding: 14px; box-shadow: var(--shadow); margin-top: 12px; }
+  .pv-price { display: flex; gap: 12px; align-items: center; margin-top: 16px; }
+  .pv-price .sq { width: 44px; height: 44px; border-radius: 15px; }
+  .pv-price .num { font-size: 30px; font-weight: 700; line-height: 1.2; }
+  .pv-price .muted, .pv-sheet .muted { color: var(--muted); }
+  .pv-price small, .pv-sheet small { display: block; color: var(--muted); font-size: 12px; line-height: 1.45; }
+  .pv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .pv-tile { background: var(--surface); border-radius: 16px; padding: 11px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 6px; }
+  .pv-tile .sq { width: 30px; height: 30px; border-radius: 10px; }
+  .pv-tile b { font-size: 15px; }
+  .pv-bar { display: flex; gap: 2px; height: 11px; border-radius: 6px; overflow: hidden; background: var(--alt); margin: 10px 0; }
+  .pv-leg { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
+  .pv-leg i { width: 8px; height: 8px; border-radius: 50%; }
+  .pv-leg span { flex: 1; }
+  .pv-sec { padding: 4px 14px; }
+  .pv-sec-h { display: flex; align-items: center; gap: 10px; padding: 10px 0; font-size: 15px; }
+  .pv-sec-h b { flex: 1; }
+  .pv-sec-h svg:last-child { color: var(--muted); }
+  .pv-sec-body { padding-bottom: 10px; }
+  .pv-mark { display: flex; gap: 8px; padding: 3px 0; }
+  .pv-mark .ck { width: 18px; height: 18px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; flex: none; margin-top: 1px; }
+  .pv-alt { background: var(--alt); border-radius: 14px; padding: 10px; display: flex; flex-direction: column; gap: 3px; }
+  .pv-alt svg { color: var(--accent); }
+  .pv-alt b { font-size: 14px; }
+  .pv-name { padding: 6px 0; border-bottom: 1px solid var(--line); }
+  .pv-name b { font-size: 15px; font-weight: 600; }
+  .pv-fb { display: flex; justify-content: center; align-items: center; gap: 8px; min-height: 46px; border-radius: 999px; background: var(--alt); font-weight: 600; margin-top: 20px; }
+  .pv-empty { color: var(--muted); text-align: center; padding: 10px 0; }
+
+  /* ---------- Save bar, toast, dialog ---------- */
+  .savewrap { position: sticky; bottom: 0; height: 0; display: flex; justify-content: center; z-index: 5; }
+  .savebar { position: absolute; bottom: 22px; display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 20px; background: var(--surface); border-radius: 999px; box-shadow: var(--shadow-lg); transform: translateY(calc(100% + 40px)); transition: transform .4s cubic-bezier(.2,.9,.3,1.2); white-space: nowrap; }
+  .savebar.show { transform: none; }
+  .savebar .led { width: 9px; height: 9px; border-radius: 50%; background: var(--marigold); animation: pulse 1.6s infinite; }
+  .savebar kbd { font: 11px ui-monospace, monospace; opacity: .6; margin-left: 2px; }
+  .toast { position: fixed; top: 18px; left: 50%; max-width: min(460px, calc(100% - 32px)); display: flex; gap: 10px; align-items: flex-start; padding: 12px 18px; border-radius: 18px; background: var(--primary); color: var(--on-primary); box-shadow: var(--shadow-lg); font-weight: 500; transform: translate(-50%, -160%); transition: transform .4s var(--ease); z-index: 30; }
+  .toast.show { transform: translate(-50%, 0); }
+  .toast.err { background: var(--danger); color: #fff; }
+  .toast svg { margin-top: 2px; }
+  dialog { border: 0; border-radius: 28px; padding: 0; width: min(640px, calc(100% - 32px)); background: var(--surface); color: var(--ink); box-shadow: var(--shadow-lg); }
+  dialog[open] { animation: pop .3s var(--ease); }
+  dialog::backdrop { background: rgba(10, 12, 20, .45); backdrop-filter: blur(4px); }
+  dialog header { display: flex; gap: 12px; align-items: center; padding: 22px 24px 8px; }
+  dialog h3 { margin: 0; font-size: 20px; }
+  dialog header p { margin: 0; color: var(--muted); font-size: 13.5px; }
+  dialog header a { color: var(--accent); }
+  .diff { padding: 8px 12px; max-height: 55vh; overflow-y: auto; }
+  .diff label { display: grid; grid-template-columns: 22px 1fr; gap: 4px 10px; padding: 12px; border-radius: 16px; cursor: pointer; }
+  .diff label:hover { background: var(--alt); }
+  .diff input { margin: 3px 0 0; width: 17px; height: 17px; accent-color: var(--accent); }
+  .diff .what { font-weight: 600; }
+  .diff .vals { grid-column: 2; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 14px; }
+  .diff .old { color: var(--muted); text-decoration: line-through; }
+  .diff .new { background: var(--success-soft); color: var(--success); padding: 1px 9px; border-radius: 8px; font-weight: 600; }
+  dialog footer { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px 20px; }
+
+  .skeleton { height: 290px; border-radius: 28px; background: linear-gradient(90deg, var(--alt), var(--surface), var(--alt)); background-size: 200% 100%; animation: sk 1.2s infinite linear; }
+  .scrim { display: none; }
+  @keyframes sk { to { background-position: -200% 0; } }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+  @keyframes pop { from { opacity: 0; transform: scale(.96) translateY(8px); } }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--marigold) 25%, transparent); } }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+  /* Narrower: the preview becomes a drawer. */
+  @media (max-width: 1360px) {
+    .app { grid-template-columns: 296px minmax(0, 1fr); }
+    #pvOpen, #pvClose { display: inline-flex; }
+    .preview { position: fixed; top: 0; right: 0; bottom: 0; width: min(424px, 100%); z-index: 20; border-left: 0; box-shadow: var(--shadow-lg); transform: translateX(105%); transition: transform .4s var(--ease); }
+    .show-preview .preview { transform: none; }
+    .show-preview .scrim { display: block; position: fixed; inset: 0; z-index: 19; background: rgba(10,12,20,.35); backdrop-filter: blur(2px); }
+  }
+  @media (max-width: 1100px) { .hero { grid-template-columns: 240px minmax(0, 1fr); } .fields.five { grid-template-columns: repeat(3, minmax(0, 1fr)); } .ntiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 860px) {
+    .app { grid-template-columns: minmax(0, 1fr); height: auto; }
+    .side { border-right: 0; border-bottom: 1px solid var(--line); padding: 16px; min-width: 0; }
+    #list { flex-direction: row; overflow-x: auto; flex: none; }
+    .item { width: auto; flex: none; }
+    .item .sci, .item .price, .sidefoot { display: none; }
+    main { overflow: visible; }
+    .wrap { padding: 16px 16px 40px; }
+    .top h2 { font-size: 22px; }
+    .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .hero { grid-template-columns: minmax(0, 1fr); }
+    .hero h1 { font-size: 26px; }
+    .hero-body { padding: 4px 6px 6px; }
+    .tab { flex: none; }
+    .fields, .fields.four, .fields.five { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .savebar { padding-left: 14px; }
+    .savebar kbd, #dirtyText { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand">
+      <img src="/logo.svg" alt="">
+      <div><b>FishID Studio</b><small>Species catalog</small></div>
+    </div>
+    <span id="pub" class="tag">Loading…</span>
+    <label class="search"><svg class="i" viewBox="0 0 24 24"><path d="M4,11a7,7 0 1,0 14,0a7,7 0 1,0 -14,0 M20,20l-3.5,-3.5"/></svg><input id="q" type="search" placeholder="Search name, Tamil or scientific" aria-label="Search species"></label>
+    <div class="seg" id="filters" role="group" aria-label="Show"></div>
+    <nav id="list" aria-label="Species"></nav>
+    <div class="sidefoot" id="foot"></div>
+  </aside>
+
+  <main id="main">
+    <div class="wrap" id="wrap">
+      <header class="top">
+        <div class="grow"><div class="eyebrow">Editing</div><h2 id="crumb">Species</h2></div>
+        <button class="btn" id="pvOpen"></button>
+      </header>
+      <div class="stats" id="stats"></div>
+      <section id="hero" class="skeleton"></section>
+      <div class="tabbar"><div class="tabs" id="tabs" role="tablist"></div></div>
+      <div id="form"></div>
+    </div>
+    <div class="savewrap">
+      <div class="savebar" id="savebar" role="region" aria-label="Unsaved changes">
+        <span class="led"></span><span id="dirtyText"></span>
+        <button class="btn ghost" id="discard">Discard</button>
+        <button class="btn primary" id="save"></button>
+      </div>
+    </div>
+  </main>
+
+  <div class="scrim" id="scrim"></div>
+  <aside class="preview" aria-label="Live preview">
+    <div class="pv-head">
+      <div class="grow"><b>Live preview</b><small>The species page in the app</small></div>
+      <div class="langsw" id="pvLang" role="group" aria-label="Preview language"></div>
+      <button class="btn icon ghost" id="pvClose" aria-label="Close preview"></button>
+    </div>
+    <div class="phone"><div class="screen" id="screen"><div class="pv-photo" id="pvPhoto"></div><div class="pv-sheet" id="pvSheet"></div></div></div>
+  </aside>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<dialog id="review">
+  <form method="dialog">
+    <header><span class="sq" id="reviewIcon"></span><div><h3>Suggestions from FishBase</h3><p id="reviewSrc"></p></div></header>
+    <div class="diff" id="diff"></div>
+    <footer><button class="btn" value="cancel">Cancel</button><button class="btn primary" value="apply" id="apply" autofocus>Apply</button></footer>
+  </form>
+</dialog>
+
+<script>
+// Edits the whole catalog in memory; Save publishes it as a new data version that phones download.
+const LABEL = {
+  marine: 'Marine', freshwater: 'Freshwater', brackish: 'Brackish', reef_associated: 'Reef-associated',
+  pelagic: 'Pelagic (open water)', demersal: 'Demersal (near the bottom)', benthopelagic: 'Benthopelagic', reef: 'Reef',
+  carnivore: 'Carnivore', herbivore: 'Herbivore', omnivore: 'Omnivore', planktivore: 'Planktivore', detritivore: 'Detritivore',
+  lc: 'Least Concern', nt: 'Near Threatened', vu: 'Vulnerable', en: 'Endangered', cr: 'Critically Endangered', dd: 'Data Deficient', ne: 'Not Evaluated',
+};
+const CODES = {
+  habitat: ['marine', 'freshwater', 'brackish', 'reef_associated'],
+  vertical: ['pelagic', 'demersal', 'benthopelagic', 'reef'],
+  feeding: ['carnivore', 'herbivore', 'omnivore', 'planktivore', 'detritivore'],
+  iucn: ['lc', 'nt', 'vu', 'en', 'cr', 'dd', 'ne'],
+};
+const IUCN_COLOR = { ne: ['#FFFFFF', '#111111'], dd: ['#D1D1C6', '#111111'], lc: ['#60C659', '#0B2A09'], nt: ['#CCE226', '#1F2600'], vu: ['#F9E814', '#2B2700'], en: ['#FC7F3F', '#2D1000'], cr: ['#D81E05', '#FFFFFF'] };
+const NUTRIENTS = [['protein', 'Protein', 'protein'], ['fat', 'Fat', 'fat'], ['carbohydrate', 'Carbohydrate', 'carbs'], ['ash', 'Ash', 'ash'], ['moisture', 'Moisture', 'moisture']];
+
+// Icon paths from the app (src/ui.tsx), plus a few the admin needs.
+const PATHS = {
+  check: 'M5,12l5,5L20,7', chevronDown: 'M6,9l6,6 6,-6', close: 'M6,6l12,12M18,6L6,18', back: 'M15,18l-6,-6 6,-6',
+  depth: 'M4,4h16M12,4v16M8,16l4,4 4,-4',
+  fish: 'M3,12c2.2,-3.6 5.2,-5.4 9,-5.4 2.7,0 4.5,1.8 5.8,3.6L21,8v8l-3.2,-2.2c-1.3,1.8 -3.1,3.6 -5.8,3.6 -3.8,0 -6.8,-1.8 -9,-5.4z',
+  globe: 'M3,12a9,9 0 1,0 18,0a9,9 0 1,0 -18,0 M3,12h18M12,3c2.5,3 2.5,15 0,18M12,3c-2.5,3 -2.5,15 0,18',
+  info: 'M3,12a9,9 0 1,0 18,0a9,9 0 1,0 -18,0 M12,11v5M12,8h0.01',
+  layers: 'M12,3l9,5 -9,5 -9,-5z M3,13l9,5 9,-5',
+  pin: 'M12,22s7,-6.2 7,-12a7,7 0 0 0 -14,0c0,5.8 7,12 7,12z M9.5,10a2.5,2.5 0 1,0 5.0,0a2.5,2.5 0 1,0 -5.0,0',
+  price: 'M3,12V4a1,1 0 0 1 1,-1h8l9,9 -9,9z M6.0,7.5a1.5,1.5 0 1,0 3.0,0a1.5,1.5 0 1,0 -3.0,0',
+  scan: 'M4,8V5a1,1 0 0 1 1,-1h3M16,4h3a1,1 0 0 1 1,1v3M20,16v3a1,1 0 0 1 -1,1h-3M8,20H5a1,1 0 0 1 -1,-1v-3 M9,12a3,3 0 1,0 6,0a3,3 0 1,0 -6,0',
+  search: 'M4,11a7,7 0 1,0 14,0a7,7 0 1,0 -14,0 M20,20l-3.5,-3.5',
+  share: 'M15,5a3,3 0 1,0 6,0a3,3 0 1,0 -6,0 M3,12a3,3 0 1,0 6,0a3,3 0 1,0 -6,0 M15,19a3,3 0 1,0 6,0a3,3 0 1,0 -6,0 M8.6,13.5l6.8,4M15.4,6.5l-6.8,4',
+  shield: 'M12,3l8,3v6c0,5 -3.5,8 -8,9 -4.5,-1 -8,-4 -8,-9V6z',
+  sun: 'M8,12a4,4 0 1,0 8,0a4,4 0 1,0 -8,0 M12,2v2M12,20v2M2,12h2M20,12h2M4.9,4.9l1.4,1.4M17.7,17.7l1.4,1.4M4.9,19.1l1.4,-1.4M17.7,6.3l1.4,-1.4',
+  moon: 'M20,14.5A8,8 0 0 1 9.5,4 8,8 0 1 0 20,14.5z',
+  waves: 'M2,9c2.5,-2 4.5,-2 7,0s4.5,2 7,0 4,-2 6,0M2,15c2.5,-2 4.5,-2 7,0s4.5,2 7,0 4,-2 6,0',
+  book: 'M5,4h10a3,3 0 0 1 3,3v13H8a3,3 0 0 1 -3,-3z M5,17a3,3 0 0 1 3,-3h10',
+  flame: 'M12,22c4,0 7,-2.8 7,-6.8 0,-4.2 -3.5,-6.7 -4.5,-11.2 -2.3,1.6 -3.5,4 -3.5,6.5 -1.2,-0.7 -2,-2 -2.2,-3.5C6.6,9.3 5,12 5,15.2 5,19.2 8,22 12,22z',
+  drop: 'M12,3c3.5,4.5 6,8 6,11a6,6 0 0 1 -12,0c0,-3 2.5,-6.5 6,-11z',
+  leaf: 'M5,19C5,10 10,5 20,4c-1,10 -6,15 -15,15z M5,19l7,-7',
+  bolt: 'M7,20l3,-7H5l7,-9 -2,7h5z',
+  sparkle: 'M12,3l1.8,5.2L19,10l-5.2,1.8L12,17l-1.8,-5.2L5,10l5.2,-1.8z M19,16l0.8,2.2L22,19l-2.2,0.8L19,22l-0.8,-2.2L16,19l2.2,-0.8z',
+  ext: 'M14,4h6v6M20,4l-9,9M18,14v5a1,1 0 0 1 -1,1H5a1,1 0 0 1 -1,-1V7a1,1 0 0 1 1,-1h5',
+  history: 'M3,12a9,9 0 1,0 18,0a9,9 0 1,0 -18,0 M12,7v5l3,2',
+  upload: 'M12,16V4m0,0l-5,5m5,-5l5,5M4,20h16',
+  phone: 'M7,2h10a2,2 0 0 1 2,2v16a2,2 0 0 1 -2,2H7a2,2 0 0 1 -2,-2V4a2,2 0 0 1 2,-2z M11,18h2',
+  logout: 'M15,4h3a2,2 0 0 1 2,2v12a2,2 0 0 1 -2,2h-3M10,17l-5,-5 5,-5M5,12h11',
+  file: 'M14,3H7a2,2 0 0 0 -2,2v14a2,2 0 0 0 2,2h10a2,2 0 0 0 2,-2V8z M14,3v5h5',
+  alert: 'M12,9v4M12,17h0.01 M10.3,3.9L2.4,18a2,2 0 0 0 1.7,3h15.8a2,2 0 0 0 1.7,-3L13.7,3.9a2,2 0 0 0 -3.4,0z',
+};
+const ic = (name, size = 18, stroke = 2) => `<svg class="i" viewBox="0 0 24 24" style="width:${size}px;height:${size}px;stroke-width:${stroke}"><path d="${PATHS[name]}"/></svg>`;
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
+/** ₹ with Indian digit grouping, as in the app (src/i18n.ts). */
+const rupees = n => { const s = Math.round(n).toString(), head = s.slice(0, -3).replace(/\B(?=(\d{2})+(?!\d))/g, ','); return '₹' + (head ? head + ',' + s.slice(-3) : s); };
+const grams = n => String(Math.round(n * 10) / 10);
+
+// Form layout: tabs → cards → fields. f(path, label, kind, options). Paths are into the species, or text.<lang>.<field>.
+const f = (path, label, kind, o = {}) => ({ path, label, kind, ...o });
+const TABS = [
+  ['names', 'Names & price', 'price', [
+    { title: 'Names', icon: 'globe', hint: 'What shoppers see first. In Tamil mode the local market name leads.', fields: [
+      f('text.en.common_name', 'Common name', 'text', { lang: 'en' }),
+      f('text.ta.common_name', 'Common name', 'text', { lang: 'ta' }),
+      f('local_name_ta', 'Local market name', 'text', { lang: 'ta' }),
+      f('local_name_roman', 'Local name in English letters', 'text', { help: 'How people type it, e.g. "kundal". Used for search.' }),
+      f('scientific_name', 'Scientific name', 'text', { serif: true }),
+      f('scientific_name_ta', 'Scientific name', 'text', { lang: 'ta' }),
+    ] },
+    { title: 'Market price', icon: 'price', tint: 'marigold', hint: 'One average retail price per species. The app shows the date beside it.', fields: [
+      f('price_inr_per_kg', 'Average price', 'int', { pre: '₹', post: 'per kg', big: true }),
+      f('price_updated', 'Last updated', 'text', { help: 'Set to today automatically when the price changes.' }),
+    ] },
+  ]],
+  ['habitat', 'Habitat', 'waves', [
+    { title: 'Where it lives', icon: 'waves', fields: [
+      f('habitat', 'Habitat', 'multi', { wide: true }),
+      f('vertical', 'Position in the water', 'single', { wide: true }),
+      f('feeding', 'Feeding', 'single', { wide: true }),
+    ] },
+    { title: 'Depth & range', icon: 'depth', tint: 'fat', fields: [
+      f('depth_m.0', 'Shallowest', 'int', { post: 'm' }),
+      f('depth_m.1', 'Deepest', 'int', { post: 'm' }),
+      f('text.en.distribution', 'Distribution', 'area', { lang: 'en' }),
+      f('text.ta.distribution', 'Distribution', 'area', { lang: 'ta' }),
+    ] },
+    { title: 'Conservation', icon: 'shield', tint: 'success', fields: [f('iucn', 'IUCN Red List status', 'iucn', { wide: true })] },
+  ]],
+  ['identify', 'Identify', 'search', [
+    { title: 'Key features', icon: 'check', hint: 'What a buyer can see by eye. One feature per line; the first two show on the compare screen.', fields: [
+      f('text.en.field_marks', 'Features', 'lines', { lang: 'en' }),
+      f('text.ta.field_marks', 'Features', 'lines', { lang: 'ta' }),
+    ] },
+    { title: 'Fin counts', icon: 'fish', tint: 'fat', cols: 'four', hint: 'From FishBase "Morphology". Where a range is given, use the lower number.', fields: [
+      f('meristics.dorsal_spines', 'Dorsal spines', 'int'),
+      f('meristics.dorsal_rays', 'Dorsal soft rays', 'int'),
+      f('meristics.anal_spines', 'Anal spines', 'int'),
+      f('meristics.anal_rays', 'Anal soft rays', 'int'),
+    ] },
+  ]],
+  ['nutrition', 'Nutrition', 'flame', [
+    { title: 'Composition per 100 g', icon: 'flame', tint: 'energy', cols: 'five', bar: true, hint: 'Protein, fat and moisture are required; ash and carbohydrate are optional.', fields: NUTRIENTS.map(([k, l]) => f(`nutrition_g.${k}`, l, 'num', { post: 'g' })) },
+  ]],
+  ['more', 'Sources & tuning', 'book', [
+    { title: 'Sources', icon: 'book', fields: [f('source', 'Citations', 'area', { wide: true, help: 'Shown at the bottom of the species page in the app.' })] },
+    { title: 'Scanning', icon: 'scan', tint: 'protein', fields: [f('confidence_threshold', 'Match threshold', 'num', { step: 0.01, help: 'Between 0 and 1. Leave blank to use the model default. Higher means fewer but surer matches.' })] },
+  ]],
+];
+const FIELDS = TABS.flatMap(([, , , cards]) => cards.flatMap(c => c.fields));
+const LANG_NAME = { en: 'English', ta: 'Tamil' };
+const fieldLabel = path => { const x = FIELDS.find(x => x.path === path); return x ? x.label + (x.lang ? ` (${LANG_NAME[x.lang]})` : '') : path; };
+
+let catalog, published, sha, repo, branch, current, ui, tab = 'names', photoIndex = 0, changedPaths = new Set(), filter = 'all', plang = 'en';
+const $ = s => document.querySelector(s);
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+const html = (tag, cls, inner) => Object.assign(el(tag, cls), { innerHTML: inner });
+
+// ---------- Data access ----------
+function target(path, create, cat = catalog, sp = current) {
+  let keys = path.split('.'), o = sp;
+  if (keys[0] === 'text') {
+    const t = (cat.text[keys[1]] ??= {});
+    if (create) t[sp.id] ??= {};
+    o = t[sp.id];
+    keys = keys.slice(2);
+  }
+  for (let i = 0; i < keys.length - 1; i++) {
+    if (o == null) break;
+    if (o[keys[i]] == null && create) o[keys[i]] = /^\d+$/.test(keys[i + 1]) ? [] : {};
+    o = o[keys[i]];
+  }
+  return [o, keys.at(-1)];
+}
+const get = (path, cat = catalog, sp = current) => { const [o, k] = target(path, false, cat, sp); return o?.[k]; };
+const today = () => new Date().toISOString().slice(0, 10);
+function set(path, v) {
+  const [o, k] = target(path, true);
+  o[k] = v;
+  if (path === 'price_inr_per_kg') {
+    target('price_updated', true)[0].price_updated = today();
+    const input = document.querySelector('[data-path="price_updated"] input');
+    if (input) input.value = today();
+  }
+  refresh();
+}
+const commonName = (cat, s) => cat.text.en?.[s.id]?.common_name || s.scientific_name;
+
+// Edits compared by value, ignoring blanks, so typing then deleting is not a change.
+const clean = v => {
+  if (Array.isArray(v)) return v.length ? v.map(clean) : undefined;
+  if (v && typeof v === 'object') {
+    const o = Object.fromEntries(Object.keys(v).sort().map(k => [k, clean(v[k])]).filter(([, x]) => x !== undefined));
+    return Object.keys(o).length ? o : undefined;
+  }
+  return v === null || v === '' ? undefined : v;
+};
+const snap = (cat, id) => JSON.stringify(clean([cat.species.find(s => s.id === id), cat.text.en?.[id], cat.text.ta?.[id]]) ?? null);
+const dirtyIds = () => catalog.species.map(s => s.id).filter(id => snap(catalog, id) !== snap(published, id));
+const same = (a, b) => JSON.stringify(clean(a) ?? null) === JSON.stringify(clean(b) ?? null);
+/** How many of [paths] differ from the published copy, for the current species. */
+const dirtyIn = paths => {
+  const was = published.species.find(s => s.id === current.id);
+  return paths.filter(p => !same(get(p), get(p, published, was))).length;
+};
+// Photo nodes are reused across re-renders so they don't flicker while typing.
+const imgCache = new Map();
+const photoEl = (name, cls, alt = '') => {
+  const key = `${cls}|${name}`;
+  if (!imgCache.has(key)) imgCache.set(key, Object.assign(el('img', cls), { src: `/img/${name}`, alt, decoding: 'async' }));
+  return imgCache.get(key);
+};
+
+// ---------- Rendering ----------
+function render() {
+  renderTabs();
+  renderForm();
+  refresh();
+}
+
+/** Everything except the form inputs, so typing never loses focus. */
+function refresh() {
+  renderList();
+  renderHero();
+  renderStats();
+  renderTabs();
+  renderBars();
+  renderPreview();
+  $('#crumb').textContent = commonName(catalog, current);
+  const dirty = dirtyIds();
+  $('#savebar').classList.toggle('show', dirty.length > 0);
+  $('#dirtyText').textContent = dirty.length === 1 ? `Unsaved changes in ${commonName(catalog, catalog.species.find(s => s.id === dirty[0]))}` : `Unsaved changes in ${dirty.length} species`;
+}
+
+function renderStats() {
+  const prices = catalog.species.map(s => s.price_inr_per_kg).filter(Boolean);
+  const avg = prices.length ? rupees(prices.reduce((a, b) => a + b, 0) / prices.length) : '—';
+  const tiles = [['fish', 'accent', 'Species', catalog.species.length], ['price', 'marigold', 'With a price', `${prices.length} of ${catalog.species.length}`], ['bolt', 'success', 'Average price / kg', avg], ['layers', 'fat', 'Data version', `v${catalog.data_version}`]];
+  $('#stats').replaceChildren(...tiles.map(([icon, tint, l, v]) => html('div', 'stat', `<span class="sq" style="--t:var(--${tint})">${ic(icon, 20)}</span><div><small>${l}</small><b>${esc(v)}</b></div>`)));
+}
+
+function renderFilters() {
+  const dirty = dirtyIds().length, unpriced = catalog.species.filter(s => !s.price_inr_per_kg).length;
+  const opts = [['all', 'All', catalog.species.length], ['unpriced', 'No price', unpriced], ['unsaved', 'Unsaved', dirty]];
+  $('#filters').replaceChildren(...opts.map(([id, label, n]) => {
+    const b = html('button', null, `${label}<span>${n}</span>`);
+    b.setAttribute('aria-pressed', filter === id);
+    b.onclick = () => { filter = id; renderList(); };
+    return b;
+  }));
+}
+
+function renderList() {
+  renderFilters();
+  const q = $('#q').value.trim().toLowerCase();
+  const dirty = new Set(dirtyIds());
+  const items = catalog.species.filter(s =>
+    (filter !== 'unpriced' || !s.price_inr_per_kg) && (filter !== 'unsaved' || dirty.has(s.id)) &&
+    (!q || [commonName(catalog, s), s.scientific_name, s.local_name_ta, s.local_name_roman, catalog.text.ta?.[s.id]?.common_name].some(n => n?.toLowerCase().includes(q))));
+  $('#list').replaceChildren(...items.map(s => {
+    const b = el('button', 'item');
+    b.setAttribute('aria-current', s === current);
+    const img = s.images?.[0] ? photoEl(s.images[0], 'thumb') : html('div', 'thumb', ic('fish', 22));
+    const txt = el('div', 'txt');
+    txt.append(el('div', 'name', commonName(catalog, s)), el('div', 'sci', s.scientific_name));
+    b.append(img, txt, el('span', s.price_inr_per_kg ? 'price' : 'price none', s.price_inr_per_kg ? rupees(s.price_inr_per_kg) : 'No price'));
+    if (dirty.has(s.id)) b.append(Object.assign(el('span', 'dot'), { title: 'Unsaved changes' }));
+    b.onclick = () => select(s);
+    return b;
+  }));
+  if (!items.length) $('#list').append(el('div', 'empty', filter === 'all' ? 'No species match.' : 'Nothing here.'));
+}
+
+function select(s) {
+  if (current === s) return;
+  current = s;
+  photoIndex = 0;
+  changedPaths.clear();
+  render();
+  $('main').scrollTo({ top: 0 });
+  scrollTo({ top: 0 });
+  $('#screen').scrollTo({ top: 0 });
+  for (const n of [$('#hero'), $('#screen')]) n.animate([{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 320, easing: 'cubic-bezier(.2,.8,.2,1)' });
+}
+
+function iucnTag(code, label = LABEL[code]) {
+  const t = el('span', 'tag', `${code.toUpperCase()} · ${label}`);
+  [t.style.background, t.style.color] = IUCN_COLOR[code] ?? [];
+  if (code === 'ne') t.style.boxShadow = 'inset 0 0 0 1px var(--line)';
+  return t;
+}
+
+function renderHero() {
+  const s = current, hero = $('#hero');
+  hero.className = 'hero';
+  const photo = el('div', 'photo'), main = el('div', 'main');
+  const images = s.images ?? [];
+  photoIndex = Math.min(photoIndex, Math.max(0, images.length - 1));
+  if (images.length) main.append(photoEl(images[photoIndex], 'big', `Photo of ${s.scientific_name}`), el('span', 'tag over', `Reference photo · ${photoIndex + 1} of ${images.length}`));
+  else main.innerHTML = ic('fish', 44);
+  photo.append(main);
+  if (images.length > 1) {
+    const thumbs = el('div', 'thumbs');
+    thumbs.append(...images.map((name, i) => {
+      const t = el('button');
+      t.setAttribute('aria-pressed', i === photoIndex);
+      t.setAttribute('aria-label', `Photo ${i + 1}`);
+      t.append(photoEl(name, 'mini'));
+      t.onclick = () => { photoIndex = i; renderHero(); renderPreview(); };
+      return t;
+    }));
+    photo.append(thumbs);
+  }
+
+  const body = el('div', 'hero-body');
+  const chips = el('div', 'chips-row');
+  chips.append(s.price_inr_per_kg ? html('span', 'tag teal', `${ic('price', 15, 2.4)}${rupees(s.price_inr_per_kg)} per kg`) : html('span', 'tag warn', `${ic('price', 15, 2.4)}No price yet`));
+  if (s.iucn) chips.append(iucnTag(s.iucn));
+  body.append(chips, el('h1', null, commonName(catalog, s)));
+  if (s.local_name_ta) body.append(Object.assign(el('div', 'second', s.local_name_ta), { lang: 'ta' }));
+  body.append(el('div', 'sciname', s.scientific_name), el('div', 'id', s.id));
+  const actions = el('div', 'hero-actions');
+  const fb = html('button', 'btn primary', `${ic('sparkle')}<span>Fill from FishBase</span>`);
+  fb.onclick = () => fishbase(fb);
+  const link = Object.assign(html('a', 'btn', `${ic('globe')}View on FishBase ${ic('ext', 14)}`), { href: fishbaseUrl(s), target: '_blank', rel: 'noopener' });
+  actions.append(fb, link);
+  body.append(actions);
+  hero.replaceChildren(photo, body);
+}
+// Non-fish (the crab) are on FishBase's sister site; their source says so.
+const fishbaseUrl = s => `https://www.${/sealifebase/i.test(s.source ?? '') ? 'sealifebase' : 'fishbase'}.se/summary/${s.scientific_name.trim().replace(/\s+/g, '-')}.html`;
+
+function renderTabs() {
+  $('#tabs').replaceChildren(...TABS.map(([id, title, icon, cards]) => {
+    const b = html('button', 'tab', `${ic(icon, 16)}${title}`);
+    b.setAttribute('role', 'tab');
+    b.setAttribute('aria-selected', id === tab);
+    const n = dirtyIn(cards.flatMap(c => c.fields.map(x => x.path)));
+    if (n) b.append(Object.assign(el('span', 'count', String(n)), { title: `${n} unsaved` }));
+    b.onclick = () => { tab = id; renderTabs(); renderForm(); renderBars(); };
+    return b;
+  }));
+}
+
+function renderForm() {
+  const [, , , cards] = TABS.find(([id]) => id === tab);
+  $('#form').replaceChildren(...cards.map(c => {
+    const card = el('section', 'card');
+    card.append(html('div', 'card-h', `<span class="sq" style="--t:var(--${c.tint ?? 'accent'})">${ic(c.icon, 20)}</span><div><h3>${esc(c.title)}</h3>${c.hint ? `<p>${esc(c.hint)}</p>` : ''}</div>`));
+    if (c.bar) card.append(Object.assign(el('div'), { id: 'nutrition' }));
+    const grid = el('div', `fields ${c.cols ?? ''}`);
+    grid.append(...c.fields.map(field));
+    card.append(grid);
+    return card;
+  }));
+}
+
+function field(x) {
+  const wrap = el('div', `f${x.wide || ['area', 'lines'].includes(x.kind) && !x.lang ? ' wide' : ''}${changedPaths.has(x.path) ? ' changed' : ''}`);
+  wrap.dataset.path = x.path;
+  const id = 'in-' + x.path.replace(/\W/g, '-');
+  const lbl = el('label', 'lbl');
+  lbl.htmlFor = id;
+  lbl.append(el('span', null, x.label));
+  if (x.lang) lbl.append(el('span', `lang ${x.lang}`, x.lang === 'ta' ? 'தமிழ்' : 'English'));
+  wrap.append(lbl);
+  const v = get(x.path);
+
+  if (x.kind === 'multi' || x.kind === 'single' || x.kind === 'iucn') {
+    const key = x.kind === 'iucn' ? 'iucn' : x.path;
+    const chips = el('div', 'chips');
+    chips.setAttribute('role', 'group');
+    chips.setAttribute('aria-label', x.label);
+    for (const code of CODES[key]) {
+      const on = x.kind === 'multi' ? (v ?? []).includes(code) : v === code;
+      const c = el('button', `chip${x.kind === 'iucn' ? ' iucn' : ''}`);
+      c.type = 'button';
+      c.setAttribute('aria-pressed', on);
+      if (x.kind === 'iucn') {
+        const sw = el('span', 'sw');
+        sw.style.background = IUCN_COLOR[code][0];
+        c.append(sw, code.toUpperCase() + ' · ' + LABEL[code]);
+        if (on) [c.style.background, c.style.color] = IUCN_COLOR[code];
+      } else c.innerHTML = (on ? ic('check', 15, 2.6) : '') + esc(LABEL[code]);
+      c.onclick = () => {
+        if (x.kind === 'multi') {
+          const cur = new Set(get(x.path) ?? []);
+          cur.has(code) ? cur.delete(code) : cur.add(code);
+          set(x.path, CODES.habitat.filter(h => cur.has(h)));
+        } else set(x.path, get(x.path) === code ? null : code); // tap again to clear
+        wrap.replaceWith(field(x));
+      };
+      chips.append(c);
+    }
+    wrap.append(chips);
+    return wrap;
+  }
+
+  const box = el('div', `box${x.big ? ' big' : ''}`);
+  const multiline = x.kind === 'area' || x.kind === 'lines';
+  const input = el(multiline ? 'textarea' : 'input');
+  input.id = id;
+  if (x.serif) input.className = 'serif';
+  if (x.kind === 'int' || x.kind === 'num') Object.assign(input, { type: 'number', min: '0', step: x.step ?? (x.kind === 'int' ? '1' : 'any'), inputMode: x.kind === 'int' ? 'numeric' : 'decimal' });
+  if (x.lang === 'ta') input.lang = 'ta';
+  input.value = x.kind === 'lines' ? (v ?? []).join('\n') : v ?? '';
+  if (x.kind === 'lines') input.rows = Math.max(5, (v ?? []).length + 1);
+  input.oninput = () => {
+    const s = input.value.trim();
+    set(x.path, x.kind === 'lines' ? s.split('\n').map(l => l.trim()).filter(Boolean)
+      : x.kind === 'int' || x.kind === 'num' ? (s === '' ? null : Number(s)) : s || null);
+    if (x.kind === 'lines') count.textContent = countText();
+  };
+  if (x.pre) box.append(el('span', 'adorn', x.pre));
+  box.append(input);
+  if (x.post) box.append(el('span', 'adorn', x.post));
+  wrap.append(box);
+  const countText = () => { const n = (get(x.path) ?? []).length; return `${n} feature${n === 1 ? '' : 's'} · one per line`; };
+  const count = el('div', 'help', x.kind === 'lines' ? countText() : x.help ?? '');
+  if (x.kind === 'lines' || x.help) wrap.append(count);
+  return wrap;
+}
+
+const kcal = n => Math.round(n.protein * 4 + n.fat * 9 + (n.carbohydrate ?? 0) * 4);
+const hasMacros = n => n && Number.isFinite(n.protein) && Number.isFinite(n.fat);
+
+/** Energy tiles and the stacked composition bar, as in the app's nutrition section. */
+function renderBars() {
+  const host = $('#nutrition');
+  if (!host) return;
+  const n = current.nutrition_g ?? {};
+  const g = k => (Number.isFinite(n[k]) ? `${grams(n[k])} g` : '—');
+  const tiles = html('div', 'ntiles', [['flame', 'energy', 'Energy', hasMacros(n) ? `${kcal(n)} kcal` : '—'], ['bolt', 'protein', 'Protein', g('protein')], ['drop', 'fat', 'Fat', g('fat')], ['leaf', 'carbs', 'Carbohydrate', g('carbohydrate')]]
+    .map(([icon, tint, l, v]) => `<div class="ntile"><span class="sq" style="--t:var(--${tint});width:32px;height:32px;border-radius:10px">${ic(icon, 17)}</span><div><small>${l}</small><b>${v}</b></div></div>`).join(''));
+  const total = NUTRIENTS.reduce((a, [k]) => a + (Number(n[k]) || 0), 0);
+  const bar = el('div', 'nbar');
+  const legend = el('div', 'legend');
+  for (const [k, l, color] of NUTRIENTS) {
+    const v = Number(n[k]) || 0;
+    const seg = el('span');
+    seg.style.cssText = `width:${total ? (v / Math.max(total, 100)) * 100 : 0}%;background:var(--${color})`;
+    seg.title = `${l} ${v} g`;
+    bar.append(seg);
+    const item = el('span');
+    const dot = el('i');
+    dot.style.background = `var(--${color})`;
+    item.append(dot, `${l} ${v ? grams(v) + ' g' : '—'}`);
+    legend.append(item);
+  }
+  const off = total > 0 && Math.abs(total - 100) > 3;
+  legend.append(el('span', `total${off ? ' off' : ''}`, total ? `Total ${+total.toFixed(2)} g${off ? ' · should be close to 100 g' : ''}` : 'No values yet'));
+  host.replaceChildren(tiles, bar, legend);
+}
+
+// ---------- Phone preview: mirrors src/screens/Profile.tsx with the app's own words ----------
+let pvPhotoKey;
+function renderPreview() {
+  if (!ui || !current) return;
+  const s = current, L = plang;
+  const t = (k, a = {}) => (ui[L][k] ?? k).replace(/\{(\w+)\}/g, (m, name) => (name in a ? String(a[name]) : m));
+  const code = (p, c) => { const k = `${p}_${c}`, v = t(k); return v === k ? c : v; };
+  const tx = catalog.text[L]?.[s.id] ?? {}, en = catalog.text.en?.[s.id] ?? {};
+  const common = tx.common_name || en.common_name || s.scientific_name;
+  const primary = L === 'ta' ? s.local_name_ta || common : common;
+  const secondary = L === 'ta' ? (s.local_name_ta ? common : null) : s.local_name_ta;
+  const marks = (tx.field_marks?.length ? tx.field_marks : en.field_marks) ?? [];
+  const dist = tx.distribution || en.distribution;
+  const images = s.images ?? [];
+
+  const key = `${images[photoIndex]}|${photoIndex}|${images.length}|${L}`;
+  if (key !== pvPhotoKey) {
+    pvPhotoKey = key;
+    $('#pvPhoto').innerHTML = (images.length ? `<img src="/img/${esc(images[photoIndex])}" alt="">` : ic('fish', 40)) +
+      `<div class="pv-btns"><span>${ic('back', 18)}</span><span>${ic('share', 18)}</span></div>` +
+      (images.length ? `<div class="over"><span class="tag">${esc(t('label_reference_photo'))}</span>${images.length > 1 ? `<div class="dots">${images.map((_, i) => `<i class="${i === photoIndex ? 'on' : ''}"></i>`).join('')}</div>` : ''}</div>` : '');
+  }
+
+  const n = s.nutrition_g, out = [];
+  const iucn = s.iucn && IUCN_COLOR[s.iucn] ? `<span class="tag" style="background:${IUCN_COLOR[s.iucn][0]};color:${IUCN_COLOR[s.iucn][1]}">${s.iucn.toUpperCase()} · ${esc(code('iucn', s.iucn))}</span>` : '';
+  out.push(`<div class="chips-row">${s.price_inr_per_kg ? `<span class="tag teal">${ic('price', 13, 2.4)}${esc(t('price_per_kg', { price: rupees(s.price_inr_per_kg) }))}</span>` : ''}${iucn}</div>`,
+    `<h4>${esc(primary)}</h4>`, secondary ? `<div class="second">${esc(secondary)}</div>` : '', `<div class="sciname">${esc(s.scientific_name)}</div>`);
+  out.push(`<div class="pv-card pv-price"><span class="sq">${ic('price', 22)}</span><div style="flex:1;min-width:0"><small style="font-size:13px">${esc(t('price_title'))}</small>` +
+    (s.price_inr_per_kg ? `<div><span class="num">${rupees(s.price_inr_per_kg)}</span> <span class="muted">${esc(t('price_unit_per_kg'))}</span></div>` : `<b>${esc(t('price_unavailable'))}</b>`) +
+    (s.price_updated ? `<small>${esc(t('price_updated', { date: s.price_updated }))}</small>` : '') + `<small>${esc(t('price_note'))}</small></div></div>`);
+
+  if (hasMacros(n)) {
+    const tile = (icon, tint, label, value) => `<div class="pv-tile"><span class="sq" style="--t:var(--${tint})">${ic(icon, 16)}</span><div><small>${esc(label)}</small><b>${esc(value)}</b></div></div>`;
+    const gr = v => t('nutrition_grams', { grams: grams(v) });
+    const parts = [['nutrition_protein', n.protein, 'protein'], ['nutrition_fat', n.fat, 'fat'], ['nutrition_carbohydrate', n.carbohydrate, 'carbs'], ['nutrition_ash', n.ash, 'ash'], ['nutrition_moisture', n.moisture, 'moisture']].filter(p => Number.isFinite(p[1]));
+    const total = parts.reduce((a, p) => a + p[1], 0) || 1;
+    out.push(`<h5>${esc(t('nutrition_title'))}</h5><div class="pv-grid">` +
+      tile('flame', 'energy', t('nutrition_energy'), t('nutrition_kcal', { kcal: kcal(n) })) + tile('bolt', 'protein', t('nutrition_protein'), gr(n.protein)) +
+      tile('drop', 'fat', t('nutrition_fat'), gr(n.fat)) + tile('leaf', 'carbs', t('nutrition_carbohydrate'), Number.isFinite(n.carbohydrate) ? gr(n.carbohydrate) : '–') + '</div>' +
+      `<div class="pv-card"><b>${esc(t('nutrition_protein_highlight', { grams: grams(n.protein) }))}</b><div class="pv-bar">${parts.map(p => `<span style="flex:${p[1] / total};background:var(--${p[2]})"></span>`).join('')}</div>` +
+      parts.map(p => `<div class="pv-leg"><i style="background:var(--${p[2]})"></i><span>${esc(t(p[0]))}</span><b>${esc(gr(p[1]))}</b></div>`).join('') + '</div>');
+  }
+
+  const section = (icon, title, body, open = true) => `<div class="pv-card pv-sec"><div class="pv-sec-h">${ic(icon, 19)}<b>${esc(title)}</b>${ic('chevronDown', 19)}</div>${open ? `<div class="pv-sec-body">${body}</div>` : ''}</div>`;
+  const m = s.meristics;
+  if (marks.length || m) {
+    out.push(section('search', t('tab_identify'),
+      marks.slice(0, 4).map(x => `<div class="pv-mark"><span class="ck">${ic('check', 11, 3)}</span><span>${esc(x)}</span></div>`).join('') +
+      (marks.length > 4 ? `<div style="color:var(--accent);font-weight:700;padding:6px 0">${esc(t('profile_show_all_features', { count: marks.length }))}</div>` : '') +
+      (m ? `<small style="margin:12px 0 6px;font-weight:500">${esc(t('morphology_counts'))}</small><div class="pv-grid">${[['morphology_dorsal_spines', m.dorsal_spines], ['morphology_dorsal_rays', m.dorsal_rays], ['morphology_anal_spines', m.anal_spines], ['morphology_anal_rays', m.anal_rays]]
+        .map(([k, v]) => `<div class="pv-alt"><b style="font-size:19px">${esc(v ?? '–')}</b><small>${esc(t(k))}</small></div>`).join('')}</div>` : '')));
+  }
+
+  const eco = [
+    ['pin', 'ecology_distribution', dist], ['waves', 'ecology_habitat', (s.habitat ?? []).map(h => code('habitat', h)).join(', ')],
+    ['fish', 'ecology_feeding', s.feeding && code('feeding', s.feeding)], ['layers', 'ecology_vertical', s.vertical && code('vertical', s.vertical)],
+    ['depth', 'ecology_depth', s.depth_m?.length === 2 && s.depth_m.every(Number.isFinite) ? t('ecology_depth_value', { min: s.depth_m[0], max: s.depth_m[1] }) : null],
+    ['shield', 'ecology_iucn', s.iucn && code('iucn', s.iucn)],
+  ].filter(e => e[2]);
+  if (eco.length) out.push(section('waves', t('ecology_title'), `<div class="pv-grid">${eco.map(([icon, k, v]) => `<div class="pv-alt">${ic(icon, 19)}<small>${esc(t(k))}</small><b>${esc(v)}</b></div>`).join('')}</div>`));
+
+  const names = [['label_common_name', common], ['label_local_name', s.local_name_ta], ['label_scientific_name', s.scientific_name], ['label_scientific_name_tamil', s.scientific_name_ta]].filter(x => x[1]);
+  out.push(section('globe', t('profile_names'), names.map(([k, v]) => `<div class="pv-name"><small>${esc(t(k))}</small><b>${esc(v)}</b></div>`).join('')));
+  out.push(`<div class="pv-fb">${ic('globe', 18)}${esc(t('profile_fishbase_link'))}</div>`);
+  if (s.source) out.push(`<small style="text-align:center;margin-top:16px">${esc(t('profile_source', { source: s.source }))}</small>`);
+  const sheet = $('#pvSheet');
+  sheet.lang = L;
+  sheet.innerHTML = out.join('');
+}
+
+function renderLangSwitch() {
+  $('#pvLang').replaceChildren(...[['en', 'A', 'English'], ['ta', 'அ', 'Tamil']].map(([l, glyph, name]) => {
+    const b = el('button', null, glyph);
+    b.setAttribute('aria-pressed', plang === l);
+    b.setAttribute('aria-label', name);
+    b.onclick = () => { plang = l; renderLangSwitch(); renderPreview(); };
+    return b;
+  }));
+}
+
+function renderFoot() {
+  const foot = $('#foot');
+  foot.replaceChildren();
+  const link = (icon, text, href) => Object.assign(html('a', null, `${ic(icon)}<span style="flex:1">${text}</span>${ic('ext', 13)}`), { href, target: '_blank', rel: 'noopener' });
+  if (repo) foot.append(link('file', 'Published file', `https://raw.githubusercontent.com/${repo}/${branch}/catalog.json`), link('history', 'Version history', `https://github.com/${repo}/commits/${branch}/catalog.json`));
+  const dark = document.documentElement.dataset.theme === 'dark';
+  const theme = html('button', null, `${ic(dark ? 'sun' : 'moon')}${dark ? 'Light mode' : 'Dark mode'}`);
+  theme.onclick = () => {
+    const next = dark ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem('theme', next); } catch {}
+    renderFoot();
+  };
+  const out = html('form', null, `<button>${ic('logout')}Sign out</button>`);
+  Object.assign(out, { method: 'post', action: '/logout' });
+  foot.append(theme, out);
+}
+
+function renderPublished() {
+  const p = $('#pub');
+  p.className = sha ? 'tag ok' : 'tag warn';
+  p.innerHTML = '<span class="led"></span>';
+  p.append(sha ? `Live · v${catalog.data_version} · ${new Date(catalog.updated).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}` : repo ? 'Not published yet' : 'Preview mode · not connected');
+  p.title = sha ? 'Phones download this version' : repo ? "Showing the app's bundled data. Save once to publish." : 'GITHUB_TOKEN / GITHUB_REPO are not set on the server, so saving is off.';
+}
+
+// ---------- Actions ----------
+let toastTimer;
+function toast(msg, err = false) {
+  const t = $('#toast');
+  t.innerHTML = ic(err ? 'alert' : 'check', 18, 2.4);
+  t.append(el('span', null, msg));
+  t.className = `toast show${err ? ' err' : ''}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), err ? 7000 : 4500);
+}
+
+async function call(url, init) {
+  const res = await fetch(url, init);
+  if (res.status === 401) { location.href = '/login'; throw new Error('Signed out'); }
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error ?? `Error ${res.status}`);
+  return body;
+}
+
+async function loadAll() {
+  let data;
+  [data, ui] = await Promise.all([call('/api/catalog'), ui ?? call('/api/ui').catch(() => null)]);
+  ({ catalog, sha, repo, branch } = data);
+  catalog.text ??= {};
+  catalog.text.en ??= {};
+  catalog.text.ta ??= {};
+  published = structuredClone(catalog);
+  current = catalog.species.find(s => s.id === current?.id) ?? catalog.species[0];
+  changedPaths.clear();
+  renderPublished();
+  renderFoot();
+  render();
+}
+
+// Blank groups become null; the server rejects half-filled ones with a readable message.
+function tidy() {
+  for (const s of catalog.species) {
+    if (Array.isArray(s.depth_m) && s.depth_m.every(v => v == null)) s.depth_m = null;
+    for (const k of ['meristics', 'nutrition_g']) if (s[k] && Object.values(s[k]).every(v => v == null)) s[k] = null;
+  }
+}
+
+async function save() {
+  if (!dirtyIds().length) return;
+  const btn = $('#save');
+  btn.disabled = true;
+  try {
+    tidy();
+    ({ catalog, sha } = await call('/api/catalog', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ catalog, sha }) }));
+    published = structuredClone(catalog);
+    current = catalog.species.find(s => s.id === current.id);
+    changedPaths.clear();
+    renderPublished();
+    render();
+    toast(`Published v${catalog.data_version}. Phones get it the next time the app is open and online.`);
+  } catch (e) {
+    toast(e.message, true);
+  }
+  btn.disabled = false;
+}
+
+$('#save').innerHTML = `${ic('upload')}Save &amp; publish<kbd>Ctrl S</kbd>`;
+$('#save').onclick = save;
+$('#discard').onclick = () => {
+  if (!confirm('Discard all unsaved changes?')) return;
+  catalog = structuredClone(published);
+  current = catalog.species.find(s => s.id === current.id);
+  changedPaths.clear();
+  render();
+};
+$('#q').oninput = renderList;
+$('#pvOpen').innerHTML = `${ic('phone')}Preview`;
+$('#pvClose').innerHTML = ic('close', 20);
+const showPreview = on => document.body.classList.toggle('show-preview', on);
+$('#pvOpen').onclick = () => showPreview(true);
+$('#pvClose').onclick = $('#scrim').onclick = () => showPreview(false);
+$('#reviewIcon').innerHTML = ic('sparkle', 20);
+addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); save(); }
+  if (e.key === 'Escape') showPreview(false);
+});
+addEventListener('beforeunload', e => { if (catalog && dirtyIds().length) e.preventDefault(); });
+renderLangSwitch();
+
+/** Fetches FishBase facts and lets the admin pick which ones to apply. */
+async function fishbase(btn) {
+  btn.disabled = true;
+  btn.lastChild.textContent = 'Asking FishBase…';
+  try {
+    const { url, facts } = await call('/api/fishbase?name=' + encodeURIComponent(current.scientific_name));
+    const proposals = [];
+    const propose = (path, v) => { if (!same(get(path), v)) proposals.push([path, v]); };
+    const { common_name, depth_m, meristics, ...rest } = facts;
+    // FishBase writes names in lower case; only a genuinely different name counts.
+    if (common_name && common_name.toLowerCase() !== get('text.en.common_name')?.toLowerCase()) propose('text.en.common_name', common_name);
+    if (depth_m) { propose('depth_m.0', depth_m[0]); propose('depth_m.1', depth_m[1]); }
+    for (const [k, v] of Object.entries(meristics ?? {})) propose(`meristics.${k}`, v);
+    for (const [k, v] of Object.entries(rest)) propose(k, v);
+    if (!proposals.length) return toast('FishBase agrees with every field it knows about.');
+    review(proposals, url);
+  } catch (e) {
+    toast(e.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.lastChild.textContent = 'Fill from FishBase';
+  }
+}
+
+function review(proposals, url) {
+  const show = v => v == null || (Array.isArray(v) && !v.length) ? 'empty' : Array.isArray(v) ? v.map(x => LABEL[x] ?? x).join(', ') : LABEL[v] ?? String(v);
+  $('#reviewSrc').replaceChildren(`${current.scientific_name} · `, Object.assign(el('a', null, 'source page'), { href: url, target: '_blank', rel: 'noopener' }));
+  $('#diff').replaceChildren(...proposals.map(([path, v], i) => {
+    const row = el('label');
+    const box = Object.assign(el('input'), { type: 'checkbox', checked: true, value: i });
+    const vals = el('div', 'vals');
+    vals.append(el('span', 'old', show(get(path))), '→', el('span', 'new', show(v)));
+    row.append(box, el('span', 'what', fieldLabel(path)), vals);
+    return row;
+  }));
+  const apply = $('#apply');
+  const count = () => { const n = $('#diff').querySelectorAll(':checked').length; apply.textContent = n ? `Apply ${n} change${n === 1 ? '' : 's'}` : 'Apply'; apply.disabled = !n; };
+  $('#diff').onchange = count;
+  count();
+  const dlg = $('#review');
+  dlg.returnValue = '';
+  dlg.onclose = () => {
+    if (dlg.returnValue !== 'apply') return;
+    const picked = [...$('#diff').querySelectorAll(':checked')].map(c => proposals[+c.value]);
+    for (const [path, v] of picked) { set(path, v); changedPaths.add(path); }
+    const tabOf = path => TABS.find(([, , , cards]) => cards.some(c => c.fields.some(x => x.path === path)))?.[0];
+    tab = tabOf(picked[0][0]) ?? tab;
+    render();
+    toast(`Applied ${picked.length} change${picked.length === 1 ? '' : 's'} from FishBase. Highlighted fields are new: check them, then save.`);
+  };
+  dlg.showModal();
+}
+
+loadAll().catch(e => { $('#hero').className = 'card'; $('#hero').textContent = `Couldn't load the catalog: ${e.message}`; toast(e.message, true); });
+</script>
+</body>
+</html>

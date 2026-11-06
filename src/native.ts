@@ -55,6 +55,10 @@ const parse = <T,>(p: Promise<string>): Promise<T> => p.then(s => JSON.parse(s))
 export const FishID = {
   catalog: (lang: Lang, query = '') => parse<Catalog>(M.catalog(lang, query)),
   versions: () => parse<Versions>(M.versions()),
+  /** Background check for newer species data (throttled to 5 min unless forced); onDataUpdated fires if some went live. */
+  syncData: (force = false) => M.syncData(force),
+  /** In-app browser tab (Chrome Custom Tab). */
+  openInApp: (url: string): void => M.openInApp(url),
   history: () => parse<Scan[]>(M.history()),
   deleteScan: (id: string): Promise<unknown> => M.deleteScan(id),
   clearHistory: (): Promise<unknown> => M.clearHistory(),
@@ -75,6 +79,11 @@ export const FishID = {
 
 export function onScanResult(cb: (s: Scan) => void) {
   const sub = DeviceEventEmitter.addListener('FishID.scanResult', (json: string) => cb(JSON.parse(json)));
+  return () => sub.remove();
+}
+
+export function onDataUpdated(cb: () => void) {
+  const sub = DeviceEventEmitter.addListener('FishID.dataUpdated', cb);
   return () => sub.remove();
 }
 

@@ -145,6 +145,7 @@
     <string name="profile_share_text">%1$s (%2$s), identified with FishID</string>
     <!-- args: source -->
     <string name="profile_source">Source: %1$s</string>
+    <string name="profile_fishbase_link">View on FishBase</string>
     <string name="catalogue_title">Fish guide</string>
     <string name="catalogue_search_hint">Search in Tamil or English</string>
     <!-- args: query -->

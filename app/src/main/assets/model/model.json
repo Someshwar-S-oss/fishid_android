@@ -1,10 +1,41 @@
 {
-  "_note": "EfficientNet-B0 (frozen) + logistic-regression head, fp16 weights. From Repos/fishy export_tflite.py. Normalisation is baked into the model: feed RGB 0..255, whole photo squashed to 224x224.",
-  "model_version": 1,
+  "_note": "EfficientNet-B0 (frozen) + logistic-regression head, fp16 weights. 17 classes (fish_fp16.tflite from Repos/fishy export_tflite.py, 2026-11-06). Normalisation is baked into the model: feed RGB 0..255, whole photo squashed to 224x224.",
+  "model_version": 2,
   "min_app_version": 1,
-  "min_data_version": 2,
-  "input": {"mean": [0, 0, 0], "std": [1, 1, 1], "range": "0-255", "resize": "squash"},
+  "min_data_version": 4,
+  "input": {
+    "mean": [
+      0,
+      0,
+      0
+    ],
+    "std": [
+      1,
+      1,
+      1
+    ],
+    "range": "0-255",
+    "resize": "squash"
+  },
   "output": "softmax",
   "default_threshold": 0.7,
-  "labels": ["atule_mate", "lutjanus_quinquelineatus", "megalaspis_cordyla"]
+  "labels": [
+    "atule_mate",
+    "charybdis_natator",
+    "decapterus_russelli",
+    "escualosa_thoracata",
+    "lutjanus_quinquelineatus",
+    "lutjanus_vitta",
+    "megalaspis_cordyla",
+    "nemipterus_bipunctatus",
+    "pelates_quadrilineatus",
+    "pomadasys_maculatus",
+    "rastrelliger_kanagurta",
+    "scolopsis_bimaculata",
+    "scolopsis_vosmeri",
+    "selar_crumenophthalmus",
+    "sphyraena_obtusata",
+    "stolephorus_indicus",
+    "terapon_jarbua"
+  ]
 }

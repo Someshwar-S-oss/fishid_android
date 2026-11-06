@@ -3,6 +3,9 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Species data/price updates (DataSync). Both are install-time permissions: no prompt. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Gallery identification still works on phones without a camera. -->
     <uses-feature android:name="android.hardware.camera.any" android:required="false" />
 

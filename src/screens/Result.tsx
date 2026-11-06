@@ -1,10 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, ScrollView, Share, StatusBar, StyleSheet, View } from 'react-native';
+import React, { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Dimensions, Easing, Image, PanResponder, ScrollView, Share, StatusBar, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FishID, fileUri, Scan } from '../native';
 import { percent, rupees } from '../i18n';
 import { Bar, Btn, Card, Chip, CircleBtn, FishImage, Icon, IconName, Scientific, Tap, Txt, useApp } from '../ui';
-import { CountUp, Pop, Reveal, stagger } from '../motion';
+import { Awake, CountUp, Pop, Reveal, stagger } from '../motion';
 
 const useScan = (scanId: string): Scan | undefined => useApp().history.find(s => s.id === scanId);
 
@@ -26,11 +26,74 @@ export function Result({ scanId }: { scanId: string }) {
   const f = scan?.species_id ? fishById[scan.species_id] : undefined;
 
   const rise = useRef(new Animated.Value(0)).current;
+  const [sheetH, setSheetH] = useState(0);
+  const [rootH, setRootH] = useState(Dimensions.get('window').height);
+  const [img, setImg] = useState<{ w: number; h: number } | null>(null);
+  useEffect(() => {
+    if (scan) Image.getSize(fileUri(scan.photo), (w, h) => setImg({ w, h }), () => setImg(null));
+  }, [scan?.photo]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     Animated.spring(rise, { toValue: 1, speed: 12, bounciness: 4, useNativeDriver: true }).start();
   }, [rise]);
 
+  // Swiping up morphs this screen into the species page (Profile.tsx): the sheet rises to where the page's sheet
+  // starts and turns its colour, the photo fills the page's header band. The page then fades in over an identical frame.
+  // [drag] is the sheet's offset; [morph] (0..1) is derived from it, so the finger scrubs the morph.
+  const heroH = Dimensions.get('window').width * 0.92; // Profile's header photo height
+  const openAt = Math.min(0, heroH - 32 - (rootH - sheetH)); // sheet offset where its top meets Profile's sheet
+  const drag = useRef(new Animated.Value(0)).current;
+  const morph = drag.interpolate({ inputRange: [Math.min(openAt, -1), 0], outputRange: [1, 0], extrapolate: 'clamp' });
+  const fadeOut = morph.interpolate({ inputRange: [0, 1], outputRange: [1, 0] });
+  const settle = (toValue: number, then?: () => void, duration = 220) =>
+    Animated.timing(drag, { toValue, duration, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start(then);
+  // The page is pushed right away (hidden) so it builds while the morph runs on the native thread; it fades in as the morph lands.
+  const openDetails = () => {
+    if (!f) return;
+    const ms = 240;
+    settle(openAt, undefined, ms);
+    push({ name: 'profile', id: f.id, scanId, morph: Date.now() + ms });
+  };
+  // Back from the species page: the sheet is in place again before the first frame shows.
+  const awake = useContext(Awake);
+  useLayoutEffect(() => { if (awake) drag.setValue(0); }, [awake, drag]);
+  const pan = useMemo(() => PanResponder.create({
+    // Vertical moves only, so taps on the buttons inside still work.
+    onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dy) > 8 && Math.abs(g.dy) > Math.abs(g.dx),
+    onPanResponderMove: (_, g) => drag.setValue(Math.max(g.dy, openAt - 40)), // a little give past fully open
+    onPanResponderRelease: (_, g) => {
+      const far = Math.max(sheetH, 300) / 3;
+      if (g.dy < Math.max(openAt / 3, -far) || g.vy < -0.8) openDetails();
+      else if (g.dy > far || g.vy > 0.8) settle(Math.max(sheetH, 600), leave);
+      else Animated.spring(drag, { toValue: 0, bounciness: 6, useNativeDriver: true }).start();
+    },
+    onPanResponderTerminate: () => settle(0),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [drag, sheetH, openAt, f?.id, scanId]);
+
   if (!scan || !f) return null;
+
+  // One photo that moves and scales from "whole, above the sheet" to "covering the species page's header band",
+  // so the morph never shows two copies. Laid out at its end size; the transform shrinks it back to the start.
+  let photoMorph = null;
+  if (img && sheetH > 0) {
+    const W = Dimensions.get('window').width;
+    const boxH = rootH - sheetH + 32 - insets.top;
+    const s = Math.min(W / img.w, boxH / img.h); // contain, above the sheet
+    const e = Math.max(W / img.w, heroH / img.h); // cover, Profile's header band
+    const end = { w: img.w * e, h: img.h * e };
+    const endX = (W - end.w) / 2, endY = (heroH - end.h) / 2;
+    const startCx = W / 2, startCy = insets.top + boxH / 2;
+    const to = (from: number) => morph.interpolate({ inputRange: [0, 1], outputRange: [from, 0] });
+    photoMorph = {
+      position: 'absolute' as const, left: endX, top: endY, width: end.w, height: end.h,
+      transform: [
+        { translateX: to(startCx - (endX + end.w / 2)) },
+        { translateY: to(startCy - (endY + end.h / 2)) },
+        { scale: morph.interpolate({ inputRange: [0, 1], outputRange: [s / e, 1] }) },
+      ],
+    };
+  }
+
   const conf = scan.candidates.find(x => x.species_id === f.id)?.confidence ?? 0;
   const high = conf >= f.threshold + (versions?.high_margin ?? 0.1);
   const price = f.price_inr_per_kg;
@@ -41,21 +104,33 @@ export function Result({ scanId }: { scanId: string }) {
   const share = () => Share.share({ message: t('profile_share_text', { name: f.primary_name, scientific_name: f.scientific_name }) });
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#000' }}>
+    <View style={{ flex: 1, backgroundColor: '#000' }} onLayout={e => setRootH(e.nativeEvent.layout.height)}>
       <StatusBar barStyle="light-content" />
-      <FishImage uri={fileUri(scan.photo)} style={StyleSheet.absoluteFill} radius={0} />
-      <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.38)' }]} />
+      {/* The user's photo shown whole above the sheet (cover on a tall screen zooms in a lot),
+          with a blurred copy filling the rest of the screen. */}
+      <Image source={{ uri: fileUri(scan.photo) }} blurRadius={25} resizeMode="cover" style={StyleSheet.absoluteFill} />
+      {photoMorph ? (
+        <Animated.Image source={{ uri: fileUri(scan.photo) }} style={photoMorph} />
+      ) : sheetH > 0 && (
+        <Image source={{ uri: fileUri(scan.photo) }} resizeMode="contain"
+          style={{ position: 'absolute', left: 0, right: 0, top: insets.top, bottom: sheetH - 32 }} />
+      )}
+      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.38)', opacity: fadeOut }]} />
 
-      <View style={{ position: 'absolute', top: insets.top + 8, left: 16 }}>
+      <Animated.View style={{ position: 'absolute', top: insets.top + 8, left: 16, opacity: fadeOut }}>
         <CircleBtn icon="close" onPhoto label={t('action_done')} onPress={() => home()} />
-      </View>
+      </Animated.View>
 
       <Animated.View
+        {...pan.panHandlers}
+        onLayout={e => setSheetH(e.nativeEvent.layout.height)}
         style={{
           position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: c.surface,
           borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingHorizontal: 24, paddingBottom: insets.bottom + 16,
-          transform: [{ translateY: rise.interpolate({ inputRange: [0, 1], outputRange: [500, 0] }) }],
+          transform: [{ translateY: Animated.add(rise.interpolate({ inputRange: [0, 1], outputRange: [500, 0] }), drag) }],
         }}>
+        {/* Fills below the sheet while it's dragged up, so the photo never shows underneath. */}
+        <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: '100%', height: 3000, backgroundColor: c.surface }} />
         <View style={{ alignSelf: 'center', width: 40, height: 5, borderRadius: 3, backgroundColor: c.line, marginTop: 10 }} />
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8, marginHorizontal: -8 }}>
           <IconBtn icon="share" label={t('action_share')} onPress={share} />
@@ -91,8 +166,13 @@ export function Result({ scanId }: { scanId: string }) {
         {/* Side by side, as in the reference, at fixed 2:3 widths in every language; long Tamil labels shrink or wrap inside them. */}
         <View style={{ flexDirection: 'row', gap: 12, marginTop: 22 }}>
           <Btn label={t('result_scan_again')} kind="outline" onPress={leave} style={{ flex: 2, paddingHorizontal: 12 }} />
-          <Btn label={t('result_view_details')} onPress={() => push({ name: 'profile', id: f.id, scanId })} style={{ flex: 3, paddingHorizontal: 12 }} />
+          <Btn label={t('result_view_details')} onPress={openDetails} style={{ flex: 3, paddingHorizontal: 12 }} />
         </View>
+        {/* Morph: the sheet turns into the species page's (blank) sheet; its text arrives with the page. */}
+        <Animated.View pointerEvents="none" style={{
+          position: 'absolute', left: 0, right: 0, top: 0, height: 3000, opacity: morph,
+          backgroundColor: c.bg, borderTopLeftRadius: 32, borderTopRightRadius: 32,
+        }} />
       </Animated.View>
     </View>
   );

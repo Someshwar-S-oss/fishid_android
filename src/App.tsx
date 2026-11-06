@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Appearance, AppState as RNAppState, BackHandler, Dimensions, Easing, StatusBar, StyleSheet, useColorScheme, useWindowDimensions, View } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { FishID, Fish, Lang, onScanResult, Scan, Versions } from './native';
+import { FishID, Fish, Lang, onDataUpdated, onScanResult, Scan, Versions } from './native';
 import { translator } from './i18n';
 import { palettes } from './theme';
 import { AppContext, AppState, Icon, IconName, Route, Tab, Tap, ThemePref, Txt, useApp } from './ui';
@@ -34,6 +34,7 @@ function Root() {
   const [fish, setFish] = useState<Fish[]>([]);
   const [history, setHistory] = useState<Scan[]>([]);
   const [versions, setVersions] = useState<Versions | null>(null);
+  const [dataRev, setDataRev] = useState(0); // bumped when newer species data went live
   const [stack, setStack] = useState<Entry[]>([]);
   const [tab, setTab] = useState<Tab>('home');
   const nextKey = useRef(1);
@@ -50,12 +51,13 @@ function Root() {
       setPrefs({ ...p, theme });
     });
     syncLanguage();
-    FishID.versions().then(setVersions).catch(() => {});
-    // The language can also change from the phone's per-app language settings.
-    const sub = RNAppState.addEventListener('change', s => s === 'active' && syncLanguage());
-    return () => sub.remove();
+    // The language can also change from the phone's per-app language settings; data may have changed on the admin site.
+    const sub = RNAppState.addEventListener('change', s => { if (s === 'active') { syncLanguage(); FishID.syncData(); } });
+    const off = onDataUpdated(() => setDataRev(r => r + 1));
+    return () => { sub.remove(); off(); };
   }, [syncLanguage]);
-  useEffect(() => { FishID.catalog(lang).then(cat => setFish(cat.entries)); }, [lang]);
+  useEffect(() => { FishID.versions().then(setVersions).catch(() => {}); }, [dataRev]);
+  useEffect(() => { FishID.catalog(lang).then(cat => setFish(cat.entries)); }, [lang, dataRev]);
 
   const reloadHistory = useCallback(() => { FishID.history().then(setHistory); }, []);
   useEffect(reloadHistory, [reloadHistory]);
@@ -113,7 +115,7 @@ function Root() {
             </Awake.Provider>
             {stack.map((e, i) => (
               <Awake.Provider key={e.key} value={i === stack.length - 1}>
-                <StackScreen top={i === stack.length - 1} modal={e.route.name === 'scanner'} sheet={e.route.name === 'result'}>
+                <StackScreen top={i === stack.length - 1} modal={e.route.name === 'scanner'} sheet={e.route.name === 'result'} fadeAt={e.route.name === 'profile' ? e.route.morph : undefined}>
                   {screenFor(e.route)}
                 </StackScreen>
               </Awake.Provider>
@@ -134,7 +136,7 @@ function screenFor(r: Route) {
     case 'result': return <Result scanId={r.scanId} />;
     case 'compare': return <Compare scanId={r.scanId} />;
     case 'nomatch': return <NoMatch scanId={r.scanId} />;
-    case 'profile': return <Profile id={r.id} scanId={r.scanId} />;
+    case 'profile': return <Profile id={r.id} scanId={r.scanId} morph={r.morph} />;
     case 'report': return <Report scanId={r.scanId} />;
     case 'settings': return <Settings />;
     default: return null;
@@ -143,16 +145,19 @@ function screenFor(r: Route) {
 
 /**
  * Slides in from the right (or up, for the camera) when pushed. A result only fades in: its own sheet slides up over the photo.
+ * A species page opened from a result's sheet is mounted while the sheet morphs into its layout, then fades in quickly
+ * the moment the morph lands ([fadeAt], a timestamp), over a frame that already looks the same.
  * Screens below stay mounted, so going back keeps their state.
  */
-function StackScreen({ children, top, modal, sheet }: { children: React.ReactNode; top: boolean; modal?: boolean; sheet?: boolean }) {
+function StackScreen({ children, top, modal, sheet, fadeAt }: { children: React.ReactNode; top: boolean; modal?: boolean; sheet?: boolean; fadeAt?: number }) {
   const { c } = useApp();
   const p = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.timing(p, { toValue: 1, duration: 280, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
-  }, [p]);
+    const delay = fadeAt ? Math.max(0, fadeAt - Date.now()) : 0;
+    Animated.timing(p, { toValue: 1, duration: fadeAt ? 150 : 280, delay, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+  }, [p]); // eslint-disable-line react-hooks/exhaustive-deps -- fadeAt only matters on mount
   const { width, height } = Dimensions.get('window');
-  const transform = sheet
+  const transform = sheet || fadeAt
     ? []
     : modal
     ? [{ translateY: p.interpolate({ inputRange: [0, 1], outputRange: [height * 0.25, 0] }) }]

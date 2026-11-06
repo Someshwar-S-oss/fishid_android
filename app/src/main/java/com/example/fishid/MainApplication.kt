@@ -2,6 +2,7 @@ package com.example.fishid
 
 import android.app.Application
 import com.example.fishid.bridge.FishIdPackage
+import com.example.fishid.data.DataSync
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
@@ -23,5 +24,6 @@ class MainApplication : Application(), ReactApplication {
         ReactFontManager.getInstance().addCustomFont(this, "HindMadurai", R.font.hind_madurai)
         ReactFontManager.getInstance().addCustomFont(this, "NotoSerifItalic", R.font.noto_serif_italic)
         loadReactNative(this)
+        DataSync.watchNetwork(this)
     }
 }

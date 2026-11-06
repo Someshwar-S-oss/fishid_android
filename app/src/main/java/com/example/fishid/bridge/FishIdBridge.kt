@@ -2,7 +2,10 @@ package com.example.fishid.bridge
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.util.Size
 import android.view.HapticFeedbackConstants
 import android.widget.FrameLayout
@@ -14,6 +17,7 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageCapture
 import androidx.camera.core.Preview
 import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.camera.core.resolutionselector.ResolutionStrategy
@@ -24,6 +28,7 @@ import androidx.core.content.pm.PackageInfoCompat
 import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.LifecycleOwner
 import com.example.fishid.data.Catalog
+import com.example.fishid.data.DataSync
 import com.example.fishid.data.History
 import com.example.fishid.data.Report
 import com.example.fishid.data.Reports
@@ -86,6 +91,7 @@ class FishIdModule(private val ctx: ReactApplicationContext) : ReactContextBaseJ
 
     init {
         FishCameraView.events = this
+        DataSync.onUpdate = { ctx.emitDeviceEvent("FishID.dataUpdated", null) }
     }
 
     fun emitState(e: ScanEngine, hasFlash: Boolean) = ctx.emitDeviceEvent("FishID.scanState", Arguments.createMap().apply {
@@ -126,6 +132,21 @@ class FishIdModule(private val ctx: ReactApplicationContext) : ReactContextBaseJ
                 }
             })
         }.toString()
+    }
+
+    /** Checks for newer species data in the background; FishID.dataUpdated fires if some went live. */
+    @ReactMethod
+    fun syncData(force: Boolean) = DataSync.refresh(ctx, force)
+
+    /**
+     * Opens [url] in an in-app browser tab (Chrome Custom Tab). The session extra is the whole Custom Tabs protocol,
+     * so no androidx.browser dependency; a browser without Custom Tabs just opens it normally.
+     */
+    @ReactMethod
+    fun openInApp(url: String) = ui {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            .putExtras(Bundle().apply { putBinder("android.support.customtabs.extra.SESSION", null) })
+        runCatching { (ctx.currentActivity ?: ctx).startActivity(if (ctx.currentActivity == null) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) else intent) }
     }
 
     @ReactMethod
@@ -309,8 +330,20 @@ class FishCameraView(private val ctx: ThemedReactContext) : FrameLayout(ctx) {
                     .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
                     .build()
                     .also { it.setAnalyzer(exec, e) }
+                // Stills for the saved photo only (the model uses analysis frames). ~3 MP: sharp on screen, small on disk.
+                val still = ImageCapture.Builder()
+                    .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                    .setResolutionSelector(
+                        ResolutionSelector.Builder()
+                            .setResolutionStrategy(ResolutionStrategy(Size(1920, 1440), ResolutionStrategy.FALLBACK_RULE_CLOSEST_LOWER_THEN_HIGHER))
+                            .build(),
+                    )
+                    .build()
                 provider.unbindAll()
-                camera = provider.bindToLifecycle(owner, CameraSelector.DEFAULT_BACK_CAMERA, p, analysis)
+                // A device that can't run three streams at once still scans; it saves the preview frame instead.
+                camera = runCatching { provider.bindToLifecycle(owner, CameraSelector.DEFAULT_BACK_CAMERA, p, analysis, still) }
+                    .onSuccess { e.stillCapture = still }
+                    .getOrElse { provider.unbindAll(); provider.bindToLifecycle(owner, CameraSelector.DEFAULT_BACK_CAMERA, p, analysis) }
                 analysis.resolutionInfo?.let { info ->
                     val r = info.resolution
                     cameraSize = if (info.rotationDegrees % 180 == 0) r else Size(r.height, r.width)
